@@ -14,28 +14,34 @@ export class AuthService {
   ) {}
 
   async login(userData: any) {
-    const { email, password } = userData;
+  const { email, password } = userData;
 
-    // 1. Buscamos si el usuario existe por su correo
-    const user = await this.userRepository.findOneBy({ email });
-    if (!user) {
-      throw new UnauthorizedException('Credenciales incorrectas');
-    }
-
-    // 2. Comparamos la contraseña que escribió con la encriptada en Postgres
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales incorrectas');
-    }
-
-    // 3. Si todo está bien, creamos el "pasaporte" (Payload) del usuario
-    const payload = { sub: user.id, email: user.email, nombre: user.nombre };
-
-    // 4. Firmamos y devolvemos el Token
-    return {
-      token: await this.jwtService.signAsync(payload),
-    };
+  const user = await this.userRepository.findOneBy({ email });
+  if (!user) {
+    throw new UnauthorizedException('Credenciales incorrectas');
   }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw new UnauthorizedException('Credenciales incorrectas');
+  }
+
+  // Ahora sí incluimos el rol en el payload del token
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    nombre: user.nombre,
+    role: user.role,
+  };
+
+  return {
+    token: await this.jwtService.signAsync(payload),
+    // Devolvemos también el rol y nombre sueltos, útiles para que el frontend
+    // los guarde en localStorage sin tener que decodificar el token
+    role: user.role,
+    nombre: user.nombre,
+  };
+}
   
   async register(userData: any) {
     const { nombre, email, password } = userData;

@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './users/entities/user.entity';
 import { AuthModule } from './auth/auth.module';
+import { EstudiantesModule } from './estudiantes/estudiantes.module';
 
 @Module({
   imports: [
@@ -16,11 +14,12 @@ import { AuthModule } from './auth/auth.module';
       username: 'postgres', // TU USUARIO DE POSTGRES
       password: 'postgres', // TU CONTRASEÑA DE POSTGRES
       database: 'erp_bd', // EL NOMBRE DE TU BASE DE DATOS
-      entities: [User],
+      autoLoadEntities: true,
       synchronize: true, // ⚠️ TRUE solo en desarrollo: crea/actualiza las tablas automáticamente
     }),
     UsersModule,
     AuthModule,
+    EstudiantesModule,
   ],
 })
 export class AppModule {}
