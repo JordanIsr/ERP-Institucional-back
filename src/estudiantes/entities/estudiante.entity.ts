@@ -1,5 +1,11 @@
-// src/estudiantes/entities/estudiante.entity.ts
 import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+
+export enum EstadoMatricula {
+  APROBADA = 'APROBADA',
+  PENDIENTE = 'PENDIENTE',
+  ANULADA = 'ANULADA',
+}
 
 @Entity('estudiantes')
 export class Estudiante {
@@ -16,6 +22,9 @@ export class Estudiante {
   apellidos!: string;
 
   @Column({ nullable: true })
+  correo!: string;
+
+  @Column({ nullable: true })
   telefono!: string;
 
   @Column()
@@ -26,4 +35,11 @@ export class Estudiante {
 
   @Column()
   jornada!: string;
+
+  @Column({ type: 'enum', enum: EstadoMatricula, default: EstadoMatricula.PENDIENTE })
+  estado!: EstadoMatricula;
+
+  @OneToOne(() => User, { nullable: true, eager: true })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario?: User;
 }

@@ -3,6 +3,14 @@ import { UsersModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { EstudiantesModule } from './estudiantes/estudiantes.module';
+import { AcademicoModule } from './academico/academico.module';
+import { AsignaturasModule } from './asignaturas/asignaturas.module';
+import { DocentesModule } from './docentes/docentes.module';
+import { PeriodosModule } from './periodos/periodos.module';
+import { CarrerasModule } from './carreras/carreras.module';
+import { MallasModule } from './mallas/mallas.module';
+import { PeriodoCarreraModule } from './periodo-carrera/periodo-carrera.module';
+import { ParalelosModule } from './paralelos/paralelos.module';
 
 @Module({
   imports: [
@@ -20,6 +28,14 @@ import { EstudiantesModule } from './estudiantes/estudiantes.module';
     UsersModule,
     AuthModule,
     EstudiantesModule,
+    AcademicoModule,
+    AsignaturasModule,
+    DocentesModule,
+    PeriodosModule, 
+    CarrerasModule,
+    MallasModule,
+    PeriodoCarreraModule,
+    ParalelosModule
   ],
 })
 export class AppModule {}

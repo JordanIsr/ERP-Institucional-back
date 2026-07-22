@@ -1,23 +1,25 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Estudiante } from './entities/estudiante.entity';
+import { Estudiante, EstadoMatricula } from './entities/estudiante.entity';
 import { CreateEstudianteDto } from './dto/create-estudiante.dto';
 import { UpdateEstudianteDto } from './dto/update-estudiante.dto';
+import { AcademicoService } from '../academico/academico.service';
 
 @Injectable()
 export class EstudiantesService {
-  
+
   constructor(
     @InjectRepository(Estudiante)
     private readonly estudianteRepository: Repository<Estudiante>,
+    private readonly academicoService: AcademicoService,
   ) {}
 
   async create(createEstudianteDto: CreateEstudianteDto) {
     const existeCedula = await this.estudianteRepository.findOne({
       where: { cedula: createEstudianteDto.cedula }
     });
-    
+
     if (existeCedula) {
       throw new ConflictException('Un estudiante con esta cédula ya existe.');
     }
@@ -40,6 +42,10 @@ export class EstudiantesService {
 
   async update(id: string, updateEstudianteDto: UpdateEstudianteDto) {
     await this.findOne(id);
+    if (updateEstudianteDto.estado === EstadoMatricula.APROBADA) {
+      await this.academicoService.puedeAprobarMatricula(id);
+    }
+
     await this.estudianteRepository.update(id, updateEstudianteDto);
     return this.findOne(id);
   }

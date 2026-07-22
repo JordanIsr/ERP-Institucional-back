@@ -6,6 +6,9 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ nullable: true })
+  cedula?: string;
+
   @Column()
   nombre!: string;
 

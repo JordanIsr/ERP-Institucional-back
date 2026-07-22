@@ -17,8 +17,9 @@ async function bootstrap() {
 
     console.log('✅ Admin creado con éxito:', admin);
   } catch (err) {
-    console.error('❌ Error creando el admin (puede que ya exista):', err.message);
-  }
+  const message = err instanceof Error ? err.message : String(err);
+  console.error('❌ Error creando el admin (puede que ya exista):', message);
+}
 
   await app.close();
 }

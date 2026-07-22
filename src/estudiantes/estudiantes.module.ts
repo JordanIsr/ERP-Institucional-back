@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm'; // <-- Asegúrate de importar esto
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { EstudiantesService } from './estudiantes.service';
 import { EstudiantesController } from './estudiantes.controller';
-import { Estudiante } from './entities/estudiante.entity'; // <-- Importa tu entidad
+import { Estudiante } from './entities/estudiante.entity';
+import { AcademicoModule } from 'src/academico/academico.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Estudiante]) // <-- Registramos la tabla aquí para que el servicio la use
+    TypeOrmModule.forFeature([Estudiante]),
+    AcademicoModule,
   ],
   controllers: [EstudiantesController],
   providers: [EstudiantesService],
