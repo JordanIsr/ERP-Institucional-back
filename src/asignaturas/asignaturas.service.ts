@@ -63,4 +63,24 @@ export class AsignaturasService {
     await this.asignaturaRepository.remove(asignatura);
     return { message: `Asignatura "${asignatura.nombre}" eliminada exitosamente.` };
   }
+
+  async buscarOCrear(nombre: string): Promise<Asignatura> {
+  const nombreLimpio = nombre.trim();
+
+  const existente = await this.asignaturaRepository.findOne({
+    where: { nombre: nombreLimpio },
+  });
+  if (existente) return existente;
+
+  // Genera un código automático si el usuario no lo especificó (ej. "MATEMATICAS-A3F9")
+  const codigoAuto = nombreLimpio
+    .toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita tildes
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 12) + '-' + Math.random().toString(36).slice(-4).toUpperCase();
+
+  const nueva = this.asignaturaRepository.create({ nombre: nombreLimpio, codigo: codigoAuto });
+  return this.asignaturaRepository.save(nueva);
+}
+
 }

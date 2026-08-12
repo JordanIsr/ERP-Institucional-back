@@ -11,6 +11,8 @@ import { DetalleMallaService } from './detalle-malla.service';
 import { DetalleMallaController } from './detalle-malla.controller';
 import { CarrerasModule } from '../carreras/carreras.module';
 import { AsignaturasModule } from '../asignaturas/asignaturas.module';
+import { MallaWizardController } from './malla-wizard.controller';
+import { MallaWizardService } from './malla-wizard.service';
 
 @Module({
   imports: [
@@ -18,8 +20,8 @@ import { AsignaturasModule } from '../asignaturas/asignaturas.module';
     CarrerasModule,
     AsignaturasModule,
   ],
-  providers: [VersionMallaService, NivelService, DetalleMallaService],
-  controllers: [VersionMallaController, NivelController, DetalleMallaController],
+  providers: [VersionMallaService, NivelService, DetalleMallaService, MallaWizardService],
+  controllers: [VersionMallaController, NivelController, DetalleMallaController, MallaWizardController],
   exports: [TypeOrmModule, VersionMallaService, NivelService, DetalleMallaService],
 })
 export class MallasModule {}
