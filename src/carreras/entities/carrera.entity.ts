@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { VersionMalla } from '../../mallas/entities/version-malla.entity';
 
 export enum EstadoCarrera {
   ACTIVA = 'ACTIVA',
@@ -21,4 +22,7 @@ export class Carrera {
 
   @CreateDateColumn()
   fechaCreacion!: Date;
+
+  @OneToMany(() => VersionMalla, (versionMalla) => versionMalla.carrera)
+  versionesMalla!: VersionMalla[];
 }

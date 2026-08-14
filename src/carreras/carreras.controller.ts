@@ -30,6 +30,13 @@ export class CarrerasController {
     return this.carrerasService.findOne(id);
   }
 
+  // src/carreras/carreras.controller.ts
+
+@Get(':id/detalle-completo')
+findDetalleCompleto(@Param('id') id: string) {
+  return this.carrerasService.findDetalleCompleto(id);
+}
+
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateCarreraDto) {

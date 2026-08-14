@@ -48,18 +48,57 @@ export class CarrerasService {
     return this.findOne(id);
   }
 
+  // src/carreras/carreras.service.ts
+
+// src/carreras/carreras.service.ts
+
+async findDetalleCompleto(id: string) {
+  const carrera = await this.carreraRepository.findOne({
+    where: { id },
+    relations: {
+      versionesMalla: {
+        niveles: {
+          detalles: {
+            asignatura: true,
+            asignaturaParalelos: {
+              paralelo: true,
+              docente: true,
+            },
+          },
+        },
+      },
+    },
+    order: {
+      versionesMalla: {
+        version: 'DESC',
+        niveles: {
+          numero: 'ASC',
+        },
+      },
+    },
+  });
+
+  if (!carrera) {
+    throw new NotFoundException(`Carrera con ID ${id} no encontrada.`);
+  }
+
+  return carrera;
+}
+
   async remove(id: string) {
     const carrera = await this.findOne(id);
 
-    // RN12: no eliminar carreras con Versiones de Malla asociadas.
-    // Se activa cuando exista VersionMallaService (siguiente módulo a construir):
-    //
-    // const tieneMallas = await this.versionMallaService.existeMallaDeCarrera(id);
-    // if (tieneMallas) {
-    //   throw new ConflictException('No se puede eliminar: esta carrera tiene versiones de malla asociadas. Puedes desactivarla en su lugar.');
-    // }
-
-    await this.carreraRepository.remove(carrera);
-    return { message: `Carrera "${carrera.nombre}" eliminada exitosamente.` };
+    try {
+      await this.carreraRepository.remove(carrera);
+      return { message: `Carrera "${carrera.nombre}" eliminada exitosamente.` };
+    } catch (error: any) {
+      // RN12: Si PostgreSQL devuelve error de Foreign Key Constraint (23001 / 23503)
+      if (error?.code === '23001' || error?.code === '23503') {
+        throw new ConflictException(
+          'No se puede eliminar: esta carrera tiene versiones de malla asociadas. Puedes desactivarla en su lugar.',
+        );
+      }
+      throw error;
+    }
   }
 }
