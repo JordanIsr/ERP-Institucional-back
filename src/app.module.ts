@@ -11,6 +11,7 @@ import { CarrerasModule } from './carreras/carreras.module';
 import { MallasModule } from './mallas/mallas.module';
 import { PeriodoCarreraModule } from './periodo-carrera/periodo-carrera.module';
 import { ParalelosModule } from './paralelos/paralelos.module';
+import { AulaModule } from './aula/aula.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ParalelosModule } from './paralelos/paralelos.module';
     PeriodosModule, 
     CarrerasModule,
     MallasModule,
+    AulaModule,
     PeriodoCarreraModule,
     ParalelosModule
   ],

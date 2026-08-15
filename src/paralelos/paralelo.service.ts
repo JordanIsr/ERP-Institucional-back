@@ -14,6 +14,7 @@ export class ParaleloService {
     private readonly paraleloRepository: Repository<Paralelo>,
     private readonly periodoCarreraService: PeriodoCarreraService,
     private readonly nivelService: NivelService,
+    
   ) {}
 
   async create(dto: CreateParaleloDto) {
