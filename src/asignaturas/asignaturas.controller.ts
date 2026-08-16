@@ -13,7 +13,7 @@ export class AsignaturasController {
   constructor(private readonly asignaturasService: AsignaturasService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreateAsignaturaDto) {
     return this.asignaturasService.create(dto);
   }
@@ -31,13 +31,13 @@ export class AsignaturasController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdateAsignaturaDto) {
     return this.asignaturasService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.asignaturasService.remove(id);
   }

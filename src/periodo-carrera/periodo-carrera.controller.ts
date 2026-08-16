@@ -13,7 +13,7 @@ export class PeriodoCarreraController {
   constructor(private readonly periodoCarreraService: PeriodoCarreraService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreatePeriodoCarreraDto) {
     return this.periodoCarreraService.create(dto);
   }
@@ -34,13 +34,13 @@ export class PeriodoCarreraController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdatePeriodoCarreraDto) {
     return this.periodoCarreraService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.periodoCarreraService.remove(id);
   }

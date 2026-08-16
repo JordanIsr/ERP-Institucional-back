@@ -13,7 +13,7 @@ export class PeriodosController {
   constructor(private readonly periodosService: PeriodosService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreatePeriodoDto) {
     return this.periodosService.create(dto);
   }
@@ -31,13 +31,13 @@ export class PeriodosController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdatePeriodoDto) {
     return this.periodosService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.periodosService.remove(id);
   }

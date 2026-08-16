@@ -13,7 +13,7 @@ export class ParaleloController {
   constructor(private readonly paraleloService: ParaleloService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreateParaleloDto) {
     return this.paraleloService.create(dto);
   }
@@ -34,13 +34,13 @@ export class ParaleloController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdateParaleloDto) {
     return this.paraleloService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.paraleloService.remove(id);
   }

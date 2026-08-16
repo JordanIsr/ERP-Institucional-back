@@ -13,7 +13,7 @@ export class NivelController {
   constructor(private readonly nivelService: NivelService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreateNivelDto) {
     return this.nivelService.create(dto);
   }
@@ -31,13 +31,13 @@ export class NivelController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdateNivelDto) {
     return this.nivelService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.nivelService.remove(id);
   }

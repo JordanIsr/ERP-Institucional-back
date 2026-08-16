@@ -13,7 +13,7 @@ export class CarrerasController {
   constructor(private readonly carrerasService: CarrerasService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreateCarreraDto) {
     return this.carrerasService.create(dto);
   }
@@ -33,18 +33,19 @@ export class CarrerasController {
   // src/carreras/carreras.controller.ts
 
 @Get(':id/detalle-completo')
+@Roles(UserRole.ADMIN, UserRole.SECRETARIA)
 findDetalleCompleto(@Param('id') id: string) {
   return this.carrerasService.findDetalleCompleto(id);
 }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdateCarreraDto) {
     return this.carrerasService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.carrerasService.remove(id);
   }

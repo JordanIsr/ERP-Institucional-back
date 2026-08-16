@@ -13,7 +13,7 @@ export class DocentesController {
   constructor(private readonly docentesService: DocentesService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreateDocenteDto) {
     return this.docentesService.create(dto);
   }
@@ -31,13 +31,13 @@ export class DocentesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdateDocenteDto) {
     return this.docentesService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.docentesService.remove(id);
   }

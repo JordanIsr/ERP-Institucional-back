@@ -12,7 +12,7 @@ export class DetalleMallaController {
   constructor(private readonly detalleMallaService: DetalleMallaService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   agregar(@Body() dto: CreateDetalleMallaDto) {
     return this.detalleMallaService.agregar(dto);
   }
@@ -24,7 +24,7 @@ export class DetalleMallaController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   quitar(@Param('id') id: string) {
     return this.detalleMallaService.quitar(id);
   }

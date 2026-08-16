@@ -13,7 +13,7 @@ export class VersionMallaController {
   constructor(private readonly versionMallaService: VersionMallaService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() dto: CreateVersionMallaDto) {
     return this.versionMallaService.create(dto);
   }
@@ -31,19 +31,19 @@ export class VersionMallaController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() dto: UpdateVersionMallaDto) {
     return this.versionMallaService.update(id, dto);
   }
 
   @Patch(':id/activar')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   activar(@Param('id') id: string) {
     return this.versionMallaService.activar(id);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.versionMallaService.remove(id);
   }
