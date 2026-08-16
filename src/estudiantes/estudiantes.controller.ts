@@ -13,7 +13,7 @@ export class EstudiantesController {
   constructor(private readonly estudiantesService: EstudiantesService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(UserRole.SECRETARIA)
   create(@Body() createEstudianteDto: CreateEstudianteDto) {
     return this.estudiantesService.create(createEstudianteDto);
   }
@@ -33,13 +33,13 @@ export class EstudiantesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(UserRole.SECRETARIA)
   update(@Param('id') id: string, @Body() updateEstudianteDto: UpdateEstudianteDto) {
     return this.estudiantesService.update(id, updateEstudianteDto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(UserRole.SECRETARIA)
   remove(@Param('id') id: string) {
     return this.estudiantesService.remove(id);
   }

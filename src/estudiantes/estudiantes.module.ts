@@ -12,5 +12,6 @@ import { AcademicoModule } from 'src/academico/academico.module';
   ],
   controllers: [EstudiantesController],
   providers: [EstudiantesService],
+  exports: [EstudiantesService],
 })
 export class EstudiantesModule {}

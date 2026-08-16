@@ -13,7 +13,7 @@ import { PeriodoCarreraModule } from './periodo-carrera/periodo-carrera.module';
 import { ParalelosModule } from './paralelos/paralelos.module';
 import { AulaModule } from './aula/aula.module';
 import { CentrosEstudioModule } from './centros-estudio/centros-estudio.module';
-
+import { SolicitudesMatriculaModule} from './solicitudes-matricula/solicitudes-matricula.module';
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { CentrosEstudioModule } from './centros-estudio/centros-estudio.module';
       password: 'postgres', // TU CONTRASEÑA DE POSTGRES
       database: 'yavirac_erp', // EL NOMBRE DE TU BASE DE DATOS
       autoLoadEntities: true,
-      synchronize: true, // ⚠️ TRUE solo en desarrollo: crea/actualiza las tablas automáticamente
+      synchronize: true, // TRUE solo en desarrollo: crea/actualiza las tablas automáticamente
     }),
     UsersModule,
     AuthModule,
@@ -41,6 +41,7 @@ import { CentrosEstudioModule } from './centros-estudio/centros-estudio.module';
     PeriodoCarreraModule,
     ParalelosModule,
     CentrosEstudioModule,
+    SolicitudesMatriculaModule,
   ],
 })
 export class AppModule {}

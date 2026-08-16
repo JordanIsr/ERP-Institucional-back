@@ -40,6 +40,11 @@ export class EstudiantesService {
     return estudiante;
   }
 
+  // Usado por SolicitudMatricula: conecta el usuario logueado (JWT) con su ficha de estudiante
+  findByUsuarioId(usuarioId: string) {
+    return this.estudianteRepository.findOne({ where: { usuario: { id: usuarioId } } });
+  }
+
   async update(id: string, updateEstudianteDto: UpdateEstudianteDto) {
     await this.findOne(id);
     if (updateEstudianteDto.estado === EstadoMatricula.APROBADA) {
