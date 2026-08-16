@@ -12,6 +12,8 @@ import { MallasModule } from './mallas/mallas.module';
 import { PeriodoCarreraModule } from './periodo-carrera/periodo-carrera.module';
 import { ParalelosModule } from './paralelos/paralelos.module';
 import { AulaModule } from './aula/aula.module';
+import { CentrosEstudioModule } from './centros-estudio/centros-estudio.module';
+
 
 @Module({
   imports: [
@@ -37,7 +39,8 @@ import { AulaModule } from './aula/aula.module';
     MallasModule,
     AulaModule,
     PeriodoCarreraModule,
-    ParalelosModule
+    ParalelosModule,
+    CentrosEstudioModule,
   ],
 })
 export class AppModule {}

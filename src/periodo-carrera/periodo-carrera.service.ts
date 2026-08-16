@@ -9,6 +9,7 @@ import { CarrerasService } from '../carreras/carreras.service';
 import { VersionMallaService } from '../mallas/version-malla.service';
 import { EstadoVersionMalla } from '../mallas/entities/version-malla.entity';
 import { EstadoPeriodo } from '../periodos/entities/periodo-academico.entity';
+import { CentrosEstudioService } from '../centros-estudio/centros-estudio.service';
 
 @Injectable()
 export class PeriodoCarreraService {
@@ -18,38 +19,38 @@ export class PeriodoCarreraService {
     private readonly periodosService: PeriodosService,
     private readonly carrerasService: CarrerasService,
     private readonly versionMallaService: VersionMallaService,
+    private readonly centrosEstudioService: CentrosEstudioService,
   ) {}
 
   async create(dto: CreatePeriodoCarreraDto) {
     const periodo = await this.periodosService.findOne(dto.periodoId);
     const carrera = await this.carrerasService.findOne(dto.carreraId);
     const versionMalla = await this.versionMallaService.findOne(dto.versionMallaId);
+    const centroEstudio = await this.centrosEstudioService.findOne(dto.centroEstudioId);
 
-    // No permitir abrir un periodo-carrera si el periodo académico ya está CERRADO
     if (periodo.estado === EstadoPeriodo.CERRADO) {
       throw new BadRequestException(
         `No se puede crear el registro: el periodo "${periodo.nombre}" ya está CERRADO.`,
       );
     }
 
-    // No permitir usar una malla que no esté ACTIVA
     if (versionMalla.estado !== EstadoVersionMalla.ACTIVA) {
       throw new BadRequestException(
         `No se puede usar la malla "${versionMalla.nombre}" porque su estado es ${versionMalla.estado}. Solo se permiten mallas ACTIVA.`,
       );
     }
 
-    // Validación de duplicado (misma carrera + periodo + jornada)
     const existe = await this.periodoCarreraRepository.findOne({
       where: {
         periodo: { id: periodo.id },
         carrera: { id: carrera.id },
         jornada: dto.jornada,
+        centroEstudio: { id: centroEstudio.id },
       },
     });
     if (existe) {
       throw new ConflictException(
-        `Ya existe un registro para "${carrera.nombre}" en el periodo "${periodo.nombre}" con jornada ${dto.jornada}.`,
+        `Ya existe un registro para "${carrera.nombre}" en el periodo "${periodo.nombre}" con jornada ${dto.jornada} en el centro "${centroEstudio.nombre}".`,
       );
     }
 
@@ -57,13 +58,12 @@ export class PeriodoCarreraService {
       periodo,
       carrera,
       versionMalla,
+      centroEstudio,
       jornada: dto.jornada,
     });
 
     return this.periodoCarreraRepository.save(nuevo);
   }
-
-  // El resto del archivo (findAll, findOne, update, remove) queda exactamente igual a como lo tenías
 
   findAll(filtros?: { periodoId?: string; carreraId?: string }) {
     const where: any = {};
@@ -108,11 +108,6 @@ export class PeriodoCarreraService {
 
   async remove(id: string) {
     const registro = await this.findOne(id);
-
-    // RN (futuro): no eliminar si ya tiene Paralelos asociados.
-    // const tieneParalelos = await this.paralelosService.existeUsoDePeriodoCarrera(id);
-    // if (tieneParalelos) throw new ConflictException('No se puede eliminar: tiene paralelos asociados.');
-
     await this.periodoCarreraRepository.remove(registro);
     return { message: 'Registro de PeriodoCarrera eliminado exitosamente.' };
   }

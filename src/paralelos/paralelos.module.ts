@@ -9,6 +9,7 @@ import { AsignaturaParaleloController } from './asignatura-paralelo.controller';
 import { PeriodoCarreraModule } from '../periodo-carrera/periodo-carrera.module';
 import { MallasModule } from '../mallas/mallas.module';
 import { DocentesModule } from '../docentes/docentes.module';
+import { AulaModule } from '../aula/aula.module';
 import { Horario } from './entities/horario.entity';
 import { HorarioService } from './horario.service';
 import { HorarioController } from './horario.controller';
@@ -19,6 +20,7 @@ import { HorarioController } from './horario.controller';
     PeriodoCarreraModule,
     MallasModule,
     DocentesModule,
+    AulaModule,
   ],
   providers: [ParaleloService, AsignaturaParaleloService, HorarioService],
   controllers: [ParaleloController, AsignaturaParaleloController, HorarioController],

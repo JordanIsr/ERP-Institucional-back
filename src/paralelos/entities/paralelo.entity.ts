@@ -1,9 +1,10 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { PeriodoCarrera } from '../../periodo-carrera/entities/periodo-carrera.entity';
 import { Nivel } from '../../mallas/entities/nivel.entity';
+import { Aula } from '../../aula/entities/aula.entity';
 
 @Entity('paralelos')
-@Unique(['periodoCarrera', 'nivel', 'nombre']) // no puede haber dos paralelos "A" en el mismo periodoCarrera+nivel
+@Unique(['periodoCarrera', 'nivel', 'nombre'])
 export class Paralelo {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -16,8 +17,12 @@ export class Paralelo {
   @JoinColumn({ name: 'nivel_id' })
   nivel!: Nivel;
 
+  @ManyToOne(() => Aula, { eager: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'aula_id' })
+  aula!: Aula;
+
   @Column()
-  nombre!: string; // ej. "A", "B"
+  nombre!: string;
 
   @Column({ type: 'int' })
   cupoMaximo!: number;

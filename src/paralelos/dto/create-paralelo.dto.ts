@@ -7,6 +7,9 @@ export class CreateParaleloDto {
   @IsUUID()
   nivelId!: string;
 
+  @IsUUID()
+  aulaId!: string;
+
   @IsString()
   @IsNotEmpty()
   nombre!: string;

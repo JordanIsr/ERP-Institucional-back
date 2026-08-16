@@ -11,6 +11,9 @@ export class CreatePeriodoCarreraDto {
   @IsUUID()
   versionMallaId!: string;
 
+  @IsUUID()
+  centroEstudioId!: string;
+
   @IsEnum(Jornada)
   jornada!: Jornada;
 }

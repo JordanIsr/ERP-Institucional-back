@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique }
 import { PeriodoAcademico } from '../../periodos/entities/periodo-academico.entity';
 import { Carrera } from '../../carreras/entities/carrera.entity';
 import { VersionMalla } from '../../mallas/entities/version-malla.entity';
+import { CentroEstudio } from '../../centros-estudio/entities/centro-estudio.entity';
 
 export enum Jornada {
   MATUTINA = 'MATUTINA',
@@ -10,7 +11,7 @@ export enum Jornada {
 }
 
 @Entity('periodo_carrera')
-@Unique(['periodo', 'carrera', 'jornada'])
+@Unique(['periodo', 'carrera', 'jornada', 'centroEstudio'])
 export class PeriodoCarrera {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -26,6 +27,10 @@ export class PeriodoCarrera {
   @ManyToOne(() => VersionMalla, { eager: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'version_malla_id' })
   versionMalla!: VersionMalla;
+
+  @ManyToOne(() => CentroEstudio, { eager: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'centro_estudio_id' })
+  centroEstudio!: CentroEstudio;
 
   @Column({ type: 'enum', enum: Jornada })
   jornada!: Jornada;

@@ -15,7 +15,6 @@ export class HorarioService {
   ) {}
 
   private seTraslapan(inicioA: string, finA: string, inicioB: string, finB: string): boolean {
-    // Dos rangos de tiempo se traslapan si uno empieza antes de que el otro termine, en ambas direcciones
     return inicioA < finB && inicioB < finA;
   }
 
@@ -31,27 +30,33 @@ export class HorarioService {
       throw new NotFoundException('No se encontró la asignación de asignatura-paralelo.');
     }
 
-    // Traemos todos los horarios del mismo día para validar choques
     const horariosDelDia = await this.horarioRepo.find({
       where: { dia: dto.dia },
-      relations: { asignaturaParalelo: { paralelo: true, docente: true } },
+      relations: { asignaturaParalelo: { paralelo: { aula: true }, docente: true } },
     });
 
     for (const h of horariosDelDia) {
       const hayTraslape = this.seTraslapan(dto.horaInicio, dto.horaFin, h.horaInicio, h.horaFin);
       if (!hayTraslape) continue;
 
-      // Choque de docente: mismo profesor, mismo día, horas traslapadas
       if (h.asignaturaParalelo.docente.id === asignaturaParalelo.docente.id) {
         throw new ConflictException(
           `Choque de horario: el docente ya tiene clase el ${dto.dia} de ${h.horaInicio} a ${h.horaFin}.`,
         );
       }
 
-      // Choque de aula/paralelo: mismo paralelo, mismo día, horas traslapadas
       if (h.asignaturaParalelo.paralelo.id === asignaturaParalelo.paralelo.id) {
         throw new ConflictException(
           `Choque de horario: esta aula ya tiene clase el ${dto.dia} de ${h.horaInicio} a ${h.horaFin}.`,
+        );
+      }
+
+      if (
+        h.asignaturaParalelo.paralelo.aula.id === asignaturaParalelo.paralelo.aula.id &&
+        h.asignaturaParalelo.paralelo.id !== asignaturaParalelo.paralelo.id
+      ) {
+        throw new ConflictException(
+          `Choque de horario: el aula "${asignaturaParalelo.paralelo.aula.nombre}" ya está ocupada por el paralelo "${h.asignaturaParalelo.paralelo.nombre}" el ${dto.dia} de ${h.horaInicio} a ${h.horaFin}.`,
         );
       }
     }

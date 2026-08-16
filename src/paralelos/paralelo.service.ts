@@ -6,6 +6,7 @@ import { CreateParaleloDto } from './dto/create-paralelo.dto';
 import { UpdateParaleloDto } from './dto/update-paralelo.dto';
 import { PeriodoCarreraService } from '../periodo-carrera/periodo-carrera.service';
 import { NivelService } from '../mallas/nivel.service';
+import { AulaService } from '../aula/aula.service';
 
 @Injectable()
 export class ParaleloService {
@@ -14,17 +15,23 @@ export class ParaleloService {
     private readonly paraleloRepository: Repository<Paralelo>,
     private readonly periodoCarreraService: PeriodoCarreraService,
     private readonly nivelService: NivelService,
-    
+    private readonly aulaService: AulaService,
   ) {}
 
   async create(dto: CreateParaleloDto) {
     const periodoCarrera = await this.periodoCarreraService.findOne(dto.periodoCarreraId);
     const nivel = await this.nivelService.findOne(dto.nivelId);
+    const aula = await this.aulaService.findOne(dto.aulaId);
 
-    // Validación: el nivel debe pertenecer a la misma VersionMalla que tiene fijada el periodoCarrera
     if (nivel.versionMalla.id !== periodoCarrera.versionMalla.id) {
       throw new BadRequestException(
         `El nivel "${nivel.nombre}" pertenece a la malla "${nivel.versionMalla.nombre}", pero este periodo-carrera usa la malla "${periodoCarrera.versionMalla.nombre}". No se pueden mezclar.`,
+      );
+    }
+
+    if (dto.cupoMaximo > aula.capacidadMaxima) {
+      throw new BadRequestException(
+        `El cupo solicitado (${dto.cupoMaximo}) supera la capacidad máxima del aula "${aula.nombre}" (${aula.capacidadMaxima}).`,
       );
     }
 
@@ -44,6 +51,7 @@ export class ParaleloService {
     const nuevo = this.paraleloRepository.create({
       periodoCarrera,
       nivel,
+      aula,
       nombre: dto.nombre,
       cupoMaximo: dto.cupoMaximo,
     });
@@ -78,7 +86,6 @@ export class ParaleloService {
 
   async remove(id: string) {
     const paralelo = await this.findOne(id);
-    // CASCADE en AsignaturaParalelo se encarga de limpiar esas filas al borrar el paralelo
     await this.paraleloRepository.remove(paralelo);
     return { message: `Paralelo "${paralelo.nombre}" eliminado exitosamente.` };
   }

@@ -6,6 +6,7 @@ import { PeriodoCarreraController } from './periodo-carrera.controller';
 import { PeriodosModule } from '../periodos/periodos.module';
 import { CarrerasModule } from '../carreras/carreras.module';
 import { MallasModule } from '../mallas/mallas.module';
+import { CentrosEstudioModule } from '../centros-estudio/centros-estudio.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MallasModule } from '../mallas/mallas.module';
     PeriodosModule,
     CarrerasModule,
     MallasModule,
+    CentrosEstudioModule,
   ],
   providers: [PeriodoCarreraService],
   controllers: [PeriodoCarreraController],
