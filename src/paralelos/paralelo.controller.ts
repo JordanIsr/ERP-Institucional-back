@@ -19,7 +19,7 @@ export class ParaleloController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(UserRole.ADMIN, UserRole.SECRETARIA, UserRole.ESTUDIANTE)
   findAll(
     @Query('periodoCarreraId') periodoCarreraId?: string,
     @Query('nivelId') nivelId?: string,
@@ -28,7 +28,7 @@ export class ParaleloController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+@Roles(UserRole.ADMIN, UserRole.SECRETARIA, UserRole.ESTUDIANTE)
   findOne(@Param('id') id: string) {
     return this.paraleloService.findOne(id);
   }

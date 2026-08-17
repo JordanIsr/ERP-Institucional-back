@@ -12,25 +12,33 @@ export class HorarioController {
   constructor(private readonly horarioService: HorarioService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   crear(@Body() dto: CreateHorarioDto) {
     return this.horarioService.crear(dto);
   }
 
   @Get('por-paralelo')
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SECRETARIA,
+    UserRole.ESTUDIANTE,
+  )
   listarPorParalelo(@Query('paraleloId') paraleloId: string) {
     return this.horarioService.listarPorParalelo(paraleloId);
   }
 
   @Get('por-docente')
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SECRETARIA,
+    UserRole.DOCENTE,
+  )
   listarPorDocente(@Query('docenteId') docenteId: string) {
     return this.horarioService.listarPorDocente(docenteId);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   eliminar(@Param('id') id: string) {
     return this.horarioService.eliminar(id);
   }

@@ -19,7 +19,7 @@ export class PeriodoCarreraController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(UserRole.ADMIN, UserRole.SECRETARIA, UserRole.ESTUDIANTE)
   findAll(
     @Query('periodoId') periodoId?: string,
     @Query('carreraId') carreraId?: string,
@@ -28,7 +28,7 @@ export class PeriodoCarreraController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(UserRole.ADMIN, UserRole.SECRETARIA, UserRole.ESTUDIANTE)
   findOne(@Param('id') id: string) {
     return this.periodoCarreraService.findOne(id);
   }

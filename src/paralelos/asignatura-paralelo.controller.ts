@@ -9,22 +9,29 @@ import { UserRole } from '../auth/roles';
 @Controller('asignatura-paralelo')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AsignaturaParaleloController {
-  constructor(private readonly asignaturaParaleloService: AsignaturaParaleloService) {}
+  constructor(
+    private readonly asignaturaParaleloService: AsignaturaParaleloService,
+  ) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   agregar(@Body() dto: CreateAsignaturaParaleloDto) {
     return this.asignaturaParaleloService.agregar(dto);
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SECRETARIA,
+    UserRole.ESTUDIANTE,
+    UserRole.DOCENTE,
+  )
   listarPorParalelo(@Query('paraleloId') paraleloId: string) {
     return this.asignaturaParaleloService.listarPorParalelo(paraleloId);
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SECRETARIA)
   quitar(@Param('id') id: string) {
     return this.asignaturaParaleloService.quitar(id);
   }
