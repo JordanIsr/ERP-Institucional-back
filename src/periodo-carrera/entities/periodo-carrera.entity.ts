@@ -10,6 +10,11 @@ export enum Jornada {
   NOCTURNA = 'NOCTURNA',
 }
 
+export enum EstadoPeriodoCarrera {
+  ACTIVA = 'ACTIVA',
+  INACTIVA = 'INACTIVA',
+}
+
 @Entity('periodo_carrera')
 @Unique(['periodo', 'carrera', 'jornada', 'centroEstudio'])
 export class PeriodoCarrera {
@@ -34,4 +39,7 @@ export class PeriodoCarrera {
 
   @Column({ type: 'enum', enum: Jornada })
   jornada!: Jornada;
+
+  @Column({ type: 'enum', enum: EstadoPeriodoCarrera, default: EstadoPeriodoCarrera.ACTIVA })
+  estado!: EstadoPeriodoCarrera;
 }

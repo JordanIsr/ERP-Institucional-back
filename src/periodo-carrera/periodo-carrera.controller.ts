@@ -23,8 +23,9 @@ export class PeriodoCarreraController {
   findAll(
     @Query('periodoId') periodoId?: string,
     @Query('carreraId') carreraId?: string,
+    @Query('estado') estado?: string,
   ) {
-    return this.periodoCarreraService.findAll({ periodoId, carreraId });
+    return this.periodoCarreraService.findAll({ periodoId, carreraId, estado });
   }
 
   @Get(':id')

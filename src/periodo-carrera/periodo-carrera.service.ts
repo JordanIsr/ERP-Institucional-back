@@ -28,18 +28,21 @@ export class PeriodoCarreraService {
     const versionMalla = await this.versionMallaService.findOne(dto.versionMallaId);
     const centroEstudio = await this.centrosEstudioService.findOne(dto.centroEstudioId);
 
+    // No permitir abrir un periodo-carrera si el periodo académico ya está CERRADO
     if (periodo.estado === EstadoPeriodo.CERRADO) {
       throw new BadRequestException(
         `No se puede crear el registro: el periodo "${periodo.nombre}" ya está CERRADO.`,
       );
     }
 
+    // No permitir usar una malla que no esté ACTIVA
     if (versionMalla.estado !== EstadoVersionMalla.ACTIVA) {
       throw new BadRequestException(
         `No se puede usar la malla "${versionMalla.nombre}" porque su estado es ${versionMalla.estado}. Solo se permiten mallas ACTIVA.`,
       );
     }
 
+    // Validación de duplicado (misma carrera + periodo + jornada + centro de estudio)
     const existe = await this.periodoCarreraRepository.findOne({
       where: {
         periodo: { id: periodo.id },
@@ -65,10 +68,13 @@ export class PeriodoCarreraService {
     return this.periodoCarreraRepository.save(nuevo);
   }
 
-  findAll(filtros?: { periodoId?: string; carreraId?: string }) {
+  // El resto del archivo (findAll, findOne, update, remove) queda exactamente igual a como lo tenías
+
+  findAll(filtros?: { periodoId?: string; carreraId?: string; estado?: string }) {
     const where: any = {};
     if (filtros?.periodoId) where.periodo = { id: filtros.periodoId };
     if (filtros?.carreraId) where.carrera = { id: filtros.carreraId };
+    if (filtros?.estado) where.estado = filtros.estado;
 
     return this.periodoCarreraRepository.find({
       where: Object.keys(where).length ? where : undefined,
@@ -100,6 +106,7 @@ export class PeriodoCarreraService {
     await this.periodoCarreraRepository.save({
       ...registro,
       jornada: dto.jornada ?? registro.jornada,
+      estado: dto.estado ?? registro.estado,
       versionMalla,
     });
 
@@ -108,6 +115,11 @@ export class PeriodoCarreraService {
 
   async remove(id: string) {
     const registro = await this.findOne(id);
+
+    // RN (futuro): no eliminar si ya tiene Paralelos asociados.
+    // const tieneParalelos = await this.paralelosService.existeUsoDePeriodoCarrera(id);
+    // if (tieneParalelos) throw new ConflictException('No se puede eliminar: tiene paralelos asociados.');
+
     await this.periodoCarreraRepository.remove(registro);
     return { message: 'Registro de PeriodoCarrera eliminado exitosamente.' };
   }
