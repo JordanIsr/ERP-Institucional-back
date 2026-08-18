@@ -19,10 +19,10 @@ export class NivelController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
-  findAll(@Query('versionMallaId') versionMallaId?: string) {
-    return this.nivelService.findAll(versionMallaId);
-  }
+@Roles(UserRole.ADMIN, UserRole.SECRETARIA, UserRole.ESTUDIANTE)
+findAll(@Query('versionMallaId') versionMallaId?: string) {
+  return this.nivelService.findAll(versionMallaId);
+}
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SECRETARIA)

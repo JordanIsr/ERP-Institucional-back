@@ -1,30 +1,39 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Estudiante, EstadoMatricula } from './entities/estudiante.entity';
+
+import { Estudiante } from './entities/estudiante.entity';
 import { CreateEstudianteDto } from './dto/create-estudiante.dto';
 import { UpdateEstudianteDto } from './dto/update-estudiante.dto';
-import { AcademicoService } from '../academico/academico.service';
 
 @Injectable()
 export class EstudiantesService {
-
   constructor(
     @InjectRepository(Estudiante)
     private readonly estudianteRepository: Repository<Estudiante>,
-    private readonly academicoService: AcademicoService,
   ) {}
 
   async create(createEstudianteDto: CreateEstudianteDto) {
     const existeCedula = await this.estudianteRepository.findOne({
-      where: { cedula: createEstudianteDto.cedula }
+      where: {
+        cedula: createEstudianteDto.cedula,
+      },
     });
 
     if (existeCedula) {
-      throw new ConflictException('Un estudiante con esta cédula ya existe.');
+      throw new ConflictException(
+        'Un estudiante con esta cédula ya existe.',
+      );
     }
 
-    const nuevoEstudiante = this.estudianteRepository.create(createEstudianteDto);
+    const nuevoEstudiante = this.estudianteRepository.create(
+      createEstudianteDto,
+    );
+
     return await this.estudianteRepository.save(nuevoEstudiante);
   }
 
@@ -33,31 +42,50 @@ export class EstudiantesService {
   }
 
   async findOne(id: string) {
-    const estudiante = await this.estudianteRepository.findOne({ where: { id } });
+    const estudiante = await this.estudianteRepository.findOne({
+      where: { id },
+    });
+
     if (!estudiante) {
-      throw new NotFoundException(`Estudiante con ID ${id} no fue encontrado`);
+      throw new NotFoundException(
+        `Estudiante con ID ${id} no fue encontrado`,
+      );
     }
+
     return estudiante;
   }
 
-  // Usado por SolicitudMatricula: conecta el usuario logueado (JWT) con su ficha de estudiante
   findByUsuarioId(usuarioId: string) {
-    return this.estudianteRepository.findOne({ where: { usuario: { id: usuarioId } } });
+    return this.estudianteRepository.findOne({
+      where: {
+        usuario: {
+          id: usuarioId,
+        },
+      },
+    });
   }
 
-  async update(id: string, updateEstudianteDto: UpdateEstudianteDto) {
+  async update(
+    id: string,
+    updateEstudianteDto: UpdateEstudianteDto,
+  ) {
     await this.findOne(id);
-    if (updateEstudianteDto.estado === EstadoMatricula.APROBADA) {
-      await this.academicoService.puedeAprobarMatricula(id);
-    }
 
-    await this.estudianteRepository.update(id, updateEstudianteDto);
+    await this.estudianteRepository.update(
+      id,
+      updateEstudianteDto,
+    );
+
     return this.findOne(id);
   }
 
   async remove(id: string) {
     const estudiante = await this.findOne(id);
+
     await this.estudianteRepository.remove(estudiante);
-    return { message: `Estudiante con ID ${id} eliminado exitosamente` };
+
+    return {
+      message: `Estudiante con ID ${id} eliminado exitosamente`,
+    };
   }
 }

@@ -1,17 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Body,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-  UseInterceptors,
-  UploadedFiles,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards, UseInterceptors, UploadedFiles, BadRequestException,} from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -122,14 +109,24 @@ export class SolicitudesMatriculaController {
 
   // ---------- SECRETARIA/ADMIN: listar todas / filtradas ----------
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
-  findAll(
-    @Query('periodoCarreraId') periodoCarreraId?: string,
-    @Query('estado') estado?: EstadoSolicitud,
-    @Query('busqueda') busqueda?: string,
-  ) {
-    return this.service.findAll({ periodoCarreraId, estado, busqueda });
-  }
+@Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+findAll(
+  @Query('periodoCarreraId') periodoCarreraId?: string,
+  @Query('carreraId') carreraId?: string,
+  @Query('periodoId') periodoId?: string,
+  @Query('paraleloId') paraleloId?: string,
+  @Query('estado') estado?: EstadoSolicitud,
+  @Query('busqueda') busqueda?: string,
+) {
+  return this.service.findAll({
+    periodoCarreraId,
+    carreraId,
+    periodoId,
+    paraleloId,
+    estado,
+    busqueda,
+  });
+}
 
   // ---------- SECRETARIA/ADMIN: solo pendientes ----------
   @Get('pendientes')
@@ -137,6 +134,20 @@ export class SolicitudesMatriculaController {
   pendientes() {
     return this.service.findPendientes();
   }
+
+  @Get('registro-notas')
+@Roles(UserRole.ADMIN, UserRole.SECRETARIA)
+registroNotas(
+  @Query('periodoCarreraId') periodoCarreraId?: string,
+  @Query('nivelId') nivelId?: string,
+  @Query('paraleloId') paraleloId?: string,
+) {
+  return this.service.obtenerEstudiantesParaNotas({
+    periodoCarreraId,
+    nivelId,
+    paraleloId,
+  });
+}
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SECRETARIA)

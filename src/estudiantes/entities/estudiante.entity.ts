@@ -1,11 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
+import {Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn,} from 'typeorm';
 
-export enum EstadoMatricula {
-  APROBADA = 'APROBADA',
-  PENDIENTE = 'PENDIENTE',
-  ANULADA = 'ANULADA',
-}
+import { User } from 'src/users/entities/user.entity';
 
 @Entity('estudiantes')
 export class Estudiante {
@@ -27,19 +22,10 @@ export class Estudiante {
   @Column({ nullable: true })
   telefono!: string;
 
-  @Column()
-  carrera!: string;
-
-  @Column()
-  periodo!: string;
-
-  @Column()
-  jornada!: string;
-
-  @Column({ type: 'enum', enum: EstadoMatricula, default: EstadoMatricula.PENDIENTE })
-  estado!: EstadoMatricula;
-
-  @OneToOne(() => User, { nullable: true, eager: true })
+  @OneToOne(() => User, {
+    nullable: true,
+    eager: true,
+  })
   @JoinColumn({ name: 'usuario_id' })
   usuario?: User;
 }

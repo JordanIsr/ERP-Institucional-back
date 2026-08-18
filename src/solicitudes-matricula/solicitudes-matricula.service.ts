@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException,} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SolicitudMatricula, EstadoSolicitud } from './entities/solicitud-matricula.entity';
@@ -141,39 +135,68 @@ export class SolicitudesMatriculaService {
   }
 
   // ---------- SECRETARIA/ADMIN: listar con filtros ----------
-  async findAll(filtros?: {
-    periodoCarreraId?: string;
-    estado?: EstadoSolicitud;
-    busqueda?: string;
-  }) {
-    const qb = this.repo
-      .createQueryBuilder('s')
-      .leftJoinAndSelect('s.estudiante', 'estudiante')
-      .leftJoinAndSelect('s.periodoCarrera', 'periodoCarrera')
-      .leftJoinAndSelect('periodoCarrera.periodo', 'periodo')
-      .leftJoinAndSelect('periodoCarrera.carrera', 'carrera')
-      .leftJoinAndSelect('periodoCarrera.centroEstudio', 'centroEstudio')
-      .leftJoinAndSelect('s.paralelo', 'paralelo')
-      .orderBy('s.fechaEnvio', 'DESC');
+ async findAll(filtros?: {
+  periodoCarreraId?: string;
+  carreraId?: string;
+  periodoId?: string;
+  paraleloId?: string;
+  estado?: EstadoSolicitud;
+  busqueda?: string;
+}) {
+  const qb = this.repo
+    .createQueryBuilder('s')
+    .leftJoinAndSelect('s.estudiante', 'estudiante')
+    .leftJoinAndSelect('s.periodoCarrera', 'periodoCarrera')
+    .leftJoinAndSelect('periodoCarrera.periodo', 'periodo')
+    .leftJoinAndSelect('periodoCarrera.carrera', 'carrera')
+    .leftJoinAndSelect('periodoCarrera.centroEstudio', 'centroEstudio')
+    .leftJoinAndSelect('s.paralelo', 'paralelo')
+    .leftJoinAndSelect('paralelo.nivel', 'nivel')
+    .orderBy('s.fechaEnvio', 'DESC');
 
-    if (filtros?.periodoCarreraId) {
-      qb.andWhere('periodoCarrera.id = :periodoCarreraId', {
-        periodoCarreraId: filtros.periodoCarreraId,
-      });
-    }
-    if (filtros?.estado) {
-      qb.andWhere('s.estado = :estado', { estado: filtros.estado });
-    }
-    if (filtros?.busqueda) {
-      qb.andWhere(
-        '(estudiante.cedula ILIKE :busqueda OR estudiante.nombres ILIKE :busqueda OR estudiante.apellidos ILIKE :busqueda)',
-        { busqueda: `%${filtros.busqueda}%` },
-      );
-    }
-
-    return qb.getMany();
+  if (filtros?.periodoCarreraId) {
+    qb.andWhere('periodoCarrera.id = :periodoCarreraId', {
+      periodoCarreraId: filtros.periodoCarreraId,
+    });
   }
 
+  if (filtros?.carreraId) {
+    qb.andWhere('carrera.id = :carreraId', {
+      carreraId: filtros.carreraId,
+    });
+  }
+
+  if (filtros?.periodoId) {
+    qb.andWhere('periodo.id = :periodoId', {
+      periodoId: filtros.periodoId,
+    });
+  }
+
+  if (filtros?.paraleloId) {
+    qb.andWhere('paralelo.id = :paraleloId', {
+      paraleloId: filtros.paraleloId,
+    });
+  }
+
+  if (filtros?.estado) {
+    qb.andWhere('s.estado = :estado', {
+      estado: filtros.estado,
+    });
+  }
+
+  if (filtros?.busqueda) {
+    qb.andWhere(
+      `(estudiante.cedula ILIKE :busqueda
+        OR estudiante.nombres ILIKE :busqueda
+        OR estudiante.apellidos ILIKE :busqueda)`,
+      {
+        busqueda: `%${filtros.busqueda}%`,
+      },
+    );
+  }
+
+  return qb.getMany();
+}
   findPendientes() {
     return this.findAll({ estado: EstadoSolicitud.PENDIENTE });
   }
@@ -218,4 +241,108 @@ export class SolicitudesMatriculaService {
     solicitud.puedeReenviar = true;
     return this.repo.save(solicitud);
   }
+
+  async obtenerEstudiantesParaNotas(filtros: {
+  periodoCarreraId?: string;
+  nivelId?: string;
+  paraleloId?: string;
+}) {
+  const qb = this.repo
+    .createQueryBuilder('solicitud')
+
+    // Estudiante
+    .innerJoinAndSelect(
+      'solicitud.estudiante',
+      'estudiante',
+    )
+
+    // Periodo + carrera
+    .innerJoinAndSelect(
+      'solicitud.periodoCarrera',
+      'periodoCarrera',
+    )
+
+    .innerJoinAndSelect(
+      'periodoCarrera.periodo',
+      'periodo',
+    )
+
+    .innerJoinAndSelect(
+      'periodoCarrera.carrera',
+      'carrera',
+    )
+
+    // Paralelo + nivel
+    .innerJoinAndSelect(
+      'solicitud.paralelo',
+      'paralelo',
+    )
+
+    .innerJoinAndSelect(
+      'paralelo.nivel',
+      'nivel',
+    )
+
+    // SOLO MATRÍCULAS APROBADAS
+    .where('solicitud.estado = :estado', {
+      estado: EstadoSolicitud.APROBADA,
+    });
+
+  if (filtros.periodoCarreraId) {
+    qb.andWhere(
+      'periodoCarrera.id = :periodoCarreraId',
+      {
+        periodoCarreraId: filtros.periodoCarreraId,
+      },
+    );
+  }
+
+  if (filtros.nivelId) {
+    qb.andWhere(
+      'nivel.id = :nivelId',
+      {
+        nivelId: filtros.nivelId,
+      },
+    );
+  }
+
+  if (filtros.paraleloId) {
+    qb.andWhere(
+      'paralelo.id = :paraleloId',
+      {
+        paraleloId: filtros.paraleloId,
+      },
+    );
+  }
+
+  const solicitudes = await qb
+    .orderBy('estudiante.apellidos', 'ASC')
+    .addOrderBy('estudiante.nombres', 'ASC')
+    .getMany();
+
+  return solicitudes.map((solicitud) => ({
+    estudianteId: solicitud.estudiante.id,
+    cedula: solicitud.estudiante.cedula,
+    nombres: solicitud.estudiante.nombres,
+    apellidos: solicitud.estudiante.apellidos,
+    correo: solicitud.estudiante.correo,
+    telefono: solicitud.estudiante.telefono,
+
+    carrera: solicitud.periodoCarrera.carrera.nombre,
+    carreraId: solicitud.periodoCarrera.carrera.id,
+
+    periodo: solicitud.periodoCarrera.periodo.nombre,
+    periodoId: solicitud.periodoCarrera.periodo.id,
+
+    nivel: solicitud.paralelo.nivel.nombre,
+    nivelId: solicitud.paralelo.nivel.id,
+
+    paralelo: solicitud.paralelo.nombre,
+    paraleloId: solicitud.paralelo.id,
+
+    jornada: solicitud.periodoCarrera.jornada,
+    
+    solicitudId: solicitud.id,
+  }));
+}
 }

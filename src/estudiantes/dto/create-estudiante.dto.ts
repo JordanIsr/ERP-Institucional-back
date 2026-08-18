@@ -1,5 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsNotEmpty } from 'class-validator';
-import { EstadoMatricula } from '../entities/estudiante.entity';
+import {IsString, IsEmail, IsOptional, IsNotEmpty,} from 'class-validator';
 
 export class CreateEstudianteDto {
   @IsString()
@@ -20,20 +19,4 @@ export class CreateEstudianteDto {
   @IsOptional()
   @IsString()
   telefono?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  carrera!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  periodo!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  jornada!: string;
-
-  @IsOptional()
-  @IsEnum(EstadoMatricula)
-  estado?: EstadoMatricula;
 }

@@ -19,13 +19,16 @@ export class ParaleloController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
-  findAll(
-    @Query('periodoCarreraId') periodoCarreraId?: string,
-    @Query('nivelId') nivelId?: string,
-  ) {
-    return this.paraleloService.findAll({ periodoCarreraId, nivelId });
-  }
+@Roles(UserRole.ADMIN, UserRole.SECRETARIA, UserRole.ESTUDIANTE)
+findAll(
+  @Query('periodoCarreraId') periodoCarreraId?: string,
+  @Query('nivelId') nivelId?: string,
+) {
+  return this.paraleloService.findAll({
+    periodoCarreraId,
+    nivelId
+  });
+}
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SECRETARIA)

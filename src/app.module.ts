@@ -21,10 +21,10 @@ import { SolicitudesMatriculaModule} from './solicitudes-matricula/solicitudes-m
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
-      port: 5433, // Puerto por defecto de Postgres
+      port: 5432, // Puerto por defecto de Postgres
       username: 'postgres', // TU USUARIO DE POSTGRES
       password: 'postgres', // TU CONTRASEÑA DE POSTGRES
-      database: 'yavirac_erp', // EL NOMBRE DE TU BASE DE DATOS
+      database: 'secondbd', // EL NOMBRE DE TU BASE DE DATOS
       autoLoadEntities: true,
       synchronize: true, // TRUE solo en desarrollo: crea/actualiza las tablas automáticamente
     }),

@@ -19,13 +19,16 @@ export class PeriodoCarreraController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
-  findAll(
-    @Query('periodoId') periodoId?: string,
-    @Query('carreraId') carreraId?: string,
-  ) {
-    return this.periodoCarreraService.findAll({ periodoId, carreraId });
-  }
+@Roles(UserRole.ADMIN,UserRole.SECRETARIA,UserRole.ESTUDIANTE)
+findAll(
+  @Query('periodoId') periodoId?: string,
+  @Query('carreraId') carreraId?: string,
+) {
+  return this.periodoCarreraService.findAll({
+    periodoId,
+    carreraId
+  });
+}
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
