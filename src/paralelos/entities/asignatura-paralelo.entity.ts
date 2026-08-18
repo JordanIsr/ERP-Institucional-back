@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { Paralelo } from './paralelo.entity';
 import { DetalleMalla } from '../../mallas/entities/detalle-malla.entity';
 import { Docente } from '../../docentes/entities/docente.entity';
@@ -11,6 +11,7 @@ export class AsignaturaParalelo {
 
   @ManyToOne(
   () => Paralelo, (paralelo) => paralelo.asignaturas, { eager: true, onDelete: 'CASCADE',})
+  @JoinColumn({ name: 'paralelo_id' })
   paralelo!: Paralelo;
 
   @ManyToOne(() => DetalleMalla, { eager: true, onDelete: 'RESTRICT' })
