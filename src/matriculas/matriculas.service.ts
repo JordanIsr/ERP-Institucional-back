@@ -58,6 +58,24 @@ export class MatriculasService {
         throw new NotFoundException('El estudiante no existe.');
       }
 
+      if (dto.tipo !== TipoMatricula.NUEVA) {
+        throw new BadRequestException(
+          'La matrícula directa de Secretaría es solamente para estudiantes nuevos.',
+        );
+      }
+
+      const matriculaAnterior = await matriculaRepo.findOne({
+        where: {
+          estudiante: { id: estudiante.id },
+        },
+      });
+
+      if (matriculaAnterior) {
+        throw new BadRequestException(
+          'El estudiante ya tiene historial de matrícula. Debe continuar mediante una solicitud desde su cuenta.',
+        );
+      }
+
       const oferta = await ofertaRepo.findOne({
         where: { id: dto.periodoCarreraId },
       });
@@ -105,6 +123,18 @@ export class MatriculasService {
         );
       }
 
+      if (paralelo.nivel.numero !== 1) {
+        throw new BadRequestException(
+          'Un estudiante nuevo debe matricularse en el primer nivel.',
+        );
+      }
+
+      if (oferta.versionMalla.estado !== EstadoVersionMalla.ACTIVA) {
+        throw new BadRequestException(
+          'Los estudiantes nuevos deben ingresar con la malla activa de la carrera.',
+        );
+      }
+
       /*
        * Un estudiante no puede matricularse dos veces en el mismo
        * periodo aunque seleccione ofertas o mallas diferentes.
@@ -148,42 +178,7 @@ export class MatriculasService {
         );
       }
 
-      let asignaturasSeleccionadas: AsignaturaParalelo[];
-
-      if (dto.tipo === TipoMatricula.REPETICION) {
-        if (
-          !dto.asignaturaParaleloIds ||
-          dto.asignaturaParaleloIds.length === 0
-        ) {
-          throw new BadRequestException(
-            'Una matrícula de repetición debe contener al menos una materia reprobada.',
-          );
-        }
-
-        const idsSolicitados = new Set(
-          dto.asignaturaParaleloIds,
-        );
-
-        asignaturasSeleccionadas =
-          asignaturasDelParalelo.filter((asignatura) =>
-            idsSolicitados.has(asignatura.id),
-          );
-
-        if (
-          asignaturasSeleccionadas.length !==
-          idsSolicitados.size
-        ) {
-          throw new BadRequestException(
-            'Una o más materias seleccionadas no pertenecen al paralelo.',
-          );
-        }
-      } else {
-        /*
-         * NUEVA, REGULAR y REINICIO_MALLA matriculan todas las
-         * asignaturas configuradas para el paralelo.
-         */
-        asignaturasSeleccionadas = asignaturasDelParalelo;
-      }
+      const asignaturasSeleccionadas = asignaturasDelParalelo;
 
       const matricula = matriculaRepo.create({
         estudiante,
@@ -204,8 +199,7 @@ export class MatriculasService {
           detalleRepo.create({
             matricula: matriculaGuardada,
             asignaturaParalelo,
-            esRepeticion:
-              dto.tipo === TipoMatricula.REPETICION,
+            esRepeticion: false,
             notaParcial1: null,
             notaParcial2: null,
             notaRecuperacion: null,

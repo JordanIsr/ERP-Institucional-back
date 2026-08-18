@@ -12,7 +12,7 @@ export class AsignaturaParaleloController {
   constructor(private readonly asignaturaParaleloService: AsignaturaParaleloService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
   agregar(@Body() dto: CreateAsignaturaParaleloDto) {
     return this.asignaturaParaleloService.agregar(dto);
   }
@@ -24,7 +24,7 @@ export class AsignaturaParaleloController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
   quitar(@Param('id') id: string) {
     return this.asignaturaParaleloService.quitar(id);
   }

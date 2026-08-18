@@ -27,7 +27,7 @@ import { DocumentosMatriculaModule } from './documentos-matricula/documentos-mat
       port: 5432, // Puerto por defecto de Postgres
       username: 'postgres', // TU USUARIO DE POSTGRES
       password: 'postgres', // TU CONTRASEÑA DE POSTGRES
-      database: 'secondbd', // EL NOMBRE DE TU BASE DE DATOS
+      database: 'database_erp', // EL NOMBRE DE TU BASE DE DATOS
       autoLoadEntities: true,
       synchronize: true, // TRUE solo en desarrollo: crea/actualiza las tablas automáticamente
     }),

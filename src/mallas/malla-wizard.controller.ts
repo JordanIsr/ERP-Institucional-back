@@ -12,7 +12,7 @@ export class MallaWizardController {
   constructor(private readonly mallaWizardService: MallaWizardService) {}
 
   @Post()
-  @Roles(UserRole.SECRETARIA)
+  @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
   crear(@Body() dto: CrearMallaRapidaDto) {
     return this.mallaWizardService.crearMallaCompleta(dto);
   }

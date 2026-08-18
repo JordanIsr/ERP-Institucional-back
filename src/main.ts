@@ -2,9 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { mkdirSync } from 'fs';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  mkdirSync(
+    join(process.cwd(), 'uploads', 'solicitudes-matricula'),
+    { recursive: true },
+  );
+  mkdirSync(
+    join(process.cwd(), 'uploads', 'comprobantes'),
+    { recursive: true },
+  );
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
 
