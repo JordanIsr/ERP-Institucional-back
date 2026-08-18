@@ -37,6 +37,15 @@ export class MatriculasController {
     );
   }
 
+  @Get('opciones-permitidas')
+@Roles(UserRole.ESTUDIANTE)
+opcionesPermitidas(
+  @Req() req: any,
+) {
+  return this.matriculasService
+    .opcionesPermitidas(req.user.sub);
+}
+
   @Get()
   @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
   findAll(

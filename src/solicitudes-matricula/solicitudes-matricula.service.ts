@@ -96,6 +96,13 @@ export class SolicitudesMatriculaService {
       );
     }
 
+    await this.matriculasService
+  .validarOpcionSolicitud(
+    estudiante.id,
+    periodoCarrera.id,
+    paralelo.id,
+  );
+  
     /*
      * No se permite tener dos solicitudes en el mismo periodo
      * académico aunque correspondan a ofertas diferentes.

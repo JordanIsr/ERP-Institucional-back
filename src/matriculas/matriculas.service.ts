@@ -1,5 +1,4 @@
 import {BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Not, Repository } from 'typeorm';
 import { EstadoMatricula, Matricula, TipoMatricula } from './entities/matricula.entity';
@@ -14,6 +13,7 @@ import { EstadoPeriodoCarrera } from '../periodo-carrera/entities/periodo-carrer
 import { Paralelo } from '../paralelos/entities/paralelo.entity';
 import { AsignaturaParalelo } from '../paralelos/entities/asignatura-paralelo.entity';
 import { EstadoPeriodo } from '../periodos/entities/periodo-academico.entity';
+import { Nivel } from '../mallas/entities/nivel.entity';
 
 @Injectable()
 export class MatriculasService {
@@ -736,6 +736,701 @@ for (const tipo of tiposRequeridos) {
       }),
     };
   });
+}
+
+private async calcularOpcionesPermitidas(
+  estudiante: Estudiante,
+) {
+  const matriculaAnterior =
+    await this.matriculaRepository
+      .createQueryBuilder('matricula')
+      .leftJoinAndSelect(
+        'matricula.periodo',
+        'periodoAnterior',
+      )
+      .leftJoinAndSelect(
+        'matricula.periodoCarrera',
+        'ofertaAnterior',
+      )
+      .leftJoinAndSelect(
+        'ofertaAnterior.carrera',
+        'carreraAnterior',
+      )
+      .leftJoinAndSelect(
+        'ofertaAnterior.centroEstudio',
+        'centroAnterior',
+      )
+      .leftJoinAndSelect(
+        'matricula.versionMalla',
+        'mallaAnterior',
+      )
+      .leftJoinAndSelect(
+        'matricula.nivel',
+        'nivelAnterior',
+      )
+      .leftJoinAndSelect(
+        'matricula.asignaturas',
+        'detalleAnterior',
+      )
+      .leftJoinAndSelect(
+        'detalleAnterior.asignaturaParalelo',
+        'asignaturaParaleloAnterior',
+      )
+      .leftJoinAndSelect(
+        'asignaturaParaleloAnterior.detalleMalla',
+        'detalleMallaAnterior',
+      )
+      .leftJoinAndSelect(
+        'detalleMallaAnterior.asignatura',
+        'asignaturaAnterior',
+      )
+      .leftJoin(
+  'matricula.estudiante',
+  'estudianteAnterior',
+)
+.where(
+  'estudianteAnterior.id = :estudianteId',
+  {
+    estudianteId: estudiante.id,
+  },
+)
+      .andWhere(
+        'matricula.estado != :anulada',
+        {
+          anulada: EstadoMatricula.ANULADA,
+        },
+      )
+      .orderBy(
+        'periodoAnterior.fechaInicio',
+        'DESC',
+      )
+      .getOne();
+
+  if (!matriculaAnterior) {
+    return {
+      puedeSolicitar: false,
+      situacion: 'ESTUDIANTE_NUEVO',
+      motivo:
+        'Los estudiantes nuevos deben ser matriculados directamente por secretaría.',
+      tipoMatricula: null,
+      documentoRequerido: null,
+      matriculaAnterior: null,
+      opciones: [],
+    };
+  }
+
+  if (
+    matriculaAnterior.estado !==
+    EstadoMatricula.FINALIZADA
+  ) {
+    return {
+      puedeSolicitar: false,
+      situacion: 'MATRICULA_SIN_FINALIZAR',
+      motivo:
+        'La matrícula anterior todavía no ha sido finalizada.',
+      tipoMatricula: null,
+      documentoRequerido: null,
+      matriculaAnterior: {
+        id: matriculaAnterior.id,
+        periodo:
+          matriculaAnterior.periodo.nombre,
+        nivel:
+          matriculaAnterior.nivel.nombre,
+        estado:
+          matriculaAnterior.estado,
+      },
+      opciones: [],
+    };
+  }
+
+  const materiasReprobadas =
+    matriculaAnterior.asignaturas.filter(
+      (detalle) =>
+        detalle.estado ===
+        EstadoMatriculaAsignatura.REPROBADA,
+    );
+
+  const asignaturasReprobadasIds = new Set(
+    materiasReprobadas.map(
+      (detalle) =>
+        detalle.asignaturaParalelo
+          .detalleMalla.asignatura.id,
+    ),
+  );
+
+  const documentoRequerido =
+    materiasReprobadas.length > 0
+      ? TipoDocumentoMatricula.COMPROBANTE_PAGO
+      : TipoDocumentoMatricula
+          .CERTIFICADO_NO_ADEUDAR;
+
+  /*
+   * Solamente se consultan periodos activos posteriores
+   * a la última matrícula.
+   */
+  const paralelosDisponibles =
+    await this.paraleloRepository
+      .createQueryBuilder('paralelo')
+      .leftJoinAndSelect(
+        'paralelo.periodoCarrera',
+        'oferta',
+      )
+      .leftJoinAndSelect(
+        'oferta.periodo',
+        'periodo',
+      )
+      .leftJoinAndSelect(
+        'oferta.carrera',
+        'carrera',
+      )
+      .leftJoinAndSelect(
+        'oferta.versionMalla',
+        'versionMalla',
+      )
+      .leftJoinAndSelect(
+        'oferta.centroEstudio',
+        'centroEstudio',
+      )
+      .leftJoinAndSelect(
+        'paralelo.nivel',
+        'nivel',
+      )
+      .leftJoinAndSelect(
+        'paralelo.aula',
+        'aula',
+      )
+      .leftJoinAndSelect(
+        'paralelo.asignaturas',
+        'asignaturaParalelo',
+      )
+      .leftJoinAndSelect(
+        'asignaturaParalelo.detalleMalla',
+        'detalleMalla',
+      )
+      .leftJoinAndSelect(
+        'detalleMalla.asignatura',
+        'asignatura',
+      )
+      .leftJoinAndSelect(
+        'asignaturaParalelo.docente',
+        'docente',
+      )
+      .where(
+        'oferta.estado = :ofertaActiva',
+        {
+          ofertaActiva:
+            EstadoPeriodoCarrera.ACTIVA,
+        },
+      )
+      .andWhere(
+        'periodo.estado = :periodoActivo',
+        {
+          periodoActivo:
+            EstadoPeriodo.ACTIVO,
+        },
+      )
+      .andWhere(
+        'periodo.fechaInicio > :fechaAnterior',
+        {
+          fechaAnterior:
+            matriculaAnterior.periodo.fechaInicio,
+        },
+      )
+      .andWhere(
+        'carrera.id = :carreraId',
+        {
+          carreraId:
+            matriculaAnterior.periodoCarrera
+              .carrera.id,
+        },
+      )
+      .andWhere(
+        'centroEstudio.id = :centroId',
+        {
+          centroId:
+            matriculaAnterior.periodoCarrera
+              .centroEstudio.id,
+        },
+      )
+      .andWhere(
+        'oferta.jornada = :jornada',
+        {
+          jornada:
+            matriculaAnterior.periodoCarrera
+              .jornada,
+        },
+      )
+      .orderBy(
+        'periodo.fechaInicio',
+        'ASC',
+      )
+      .addOrderBy(
+        'paralelo.nombre',
+        'ASC',
+      )
+      .getMany();
+
+  let tipoMatricula: TipoMatricula;
+  let situacion: string;
+  let candidatos: Paralelo[] = [];
+
+  if (materiasReprobadas.length > 0) {
+    /*
+     * Primero se busca el mismo nivel y la misma malla.
+     */
+    const candidatosMismaMalla =
+      paralelosDisponibles.filter(
+        (paralelo) =>
+          paralelo.periodoCarrera.versionMalla.id ===
+            matriculaAnterior.versionMalla.id &&
+          paralelo.nivel.numero ===
+            matriculaAnterior.nivel.numero,
+      );
+
+    if (candidatosMismaMalla.length > 0) {
+      tipoMatricula =
+        TipoMatricula.REPETICION;
+
+      situacion =
+        'REPETICION_MISMA_MALLA';
+
+      /*
+       * El paralelo debe contener todas las materias
+       * que el estudiante reprobó.
+       */
+      candidatos =
+        candidatosMismaMalla.filter(
+          (paralelo) => {
+            const asignaturasIds = new Set(
+              paralelo.asignaturas.map(
+                (asignaturaParalelo) =>
+                  asignaturaParalelo.detalleMalla
+                    .asignatura.id,
+              ),
+            );
+
+            return [
+              ...asignaturasReprobadasIds,
+            ].every((id) =>
+              asignaturasIds.has(id),
+            );
+          },
+        );
+
+      if (candidatos.length === 0) {
+        return {
+          puedeSolicitar: false,
+          situacion:
+            'PARALELO_INCOMPLETO',
+          motivo:
+            'Existen paralelos para tu malla, pero no contienen todas las materias que debes repetir. Secretaría debe completar la configuración.',
+          tipoMatricula,
+          documentoRequerido,
+          matriculaAnterior: {
+            id: matriculaAnterior.id,
+            periodo:
+              matriculaAnterior.periodo
+                .nombre,
+            malla:
+              matriculaAnterior.versionMalla
+                .nombre,
+            nivel:
+              matriculaAnterior.nivel
+                .nombre,
+          },
+          opciones: [],
+        };
+      }
+    } else {
+      /*
+       * Si ya no se ofrece su malla para repetir,
+       * debe reiniciar con la nueva malla activa.
+       */
+      tipoMatricula =
+        TipoMatricula.REINICIO_MALLA;
+
+      situacion =
+        'REINICIO_POR_CAMBIO_MALLA';
+
+      candidatos =
+        paralelosDisponibles.filter(
+          (paralelo) =>
+            paralelo.periodoCarrera
+              .versionMalla.id !==
+              matriculaAnterior.versionMalla.id &&
+            paralelo.periodoCarrera
+              .versionMalla.estado ===
+              EstadoVersionMalla.ACTIVA &&
+            paralelo.nivel.numero === 1,
+        );
+    }
+  } else {
+    tipoMatricula =
+      TipoMatricula.REGULAR;
+
+    situacion =
+      'SIGUIENTE_NIVEL';
+
+    const siguienteNivel =
+      matriculaAnterior.nivel.numero + 1;
+
+    candidatos =
+      paralelosDisponibles.filter(
+        (paralelo) =>
+          paralelo.periodoCarrera.versionMalla.id ===
+            matriculaAnterior.versionMalla.id &&
+          paralelo.nivel.numero ===
+            siguienteNivel,
+      );
+
+    if (candidatos.length === 0) {
+      const ultimoNivel =
+        await this.dataSource
+          .getRepository(Nivel)
+          .createQueryBuilder('nivel')
+          .where(
+            'nivel.version_malla_id = :versionMallaId',
+            {
+              versionMallaId:
+                matriculaAnterior.versionMalla.id,
+            },
+          )
+          .orderBy(
+            'nivel.numero',
+            'DESC',
+          )
+          .getOne();
+
+      if (
+        ultimoNivel &&
+        matriculaAnterior.nivel.numero >=
+          ultimoNivel.numero
+      ) {
+        return {
+          puedeSolicitar: false,
+          situacion:
+            'MALLA_COMPLETADA',
+          motivo:
+            'El estudiante completó todos los niveles de su malla curricular.',
+          tipoMatricula: null,
+          documentoRequerido: null,
+          matriculaAnterior: {
+            id: matriculaAnterior.id,
+            periodo:
+              matriculaAnterior.periodo
+                .nombre,
+            malla:
+              matriculaAnterior.versionMalla
+                .nombre,
+            nivel:
+              matriculaAnterior.nivel
+                .nombre,
+          },
+          opciones: [],
+        };
+      }
+    }
+  }
+
+  /*
+   * Se eliminan paralelos sin materias, sin cupos o de
+   * periodos donde ya exista solicitud/matrícula.
+   */
+  const opciones: any[] = [];
+
+  const solicitudRepository =
+    this.dataSource.getRepository(
+      SolicitudMatricula,
+    );
+
+  for (const paralelo of candidatos) {
+    if (
+      !paralelo.asignaturas ||
+      paralelo.asignaturas.length === 0
+    ) {
+      continue;
+    }
+
+    const matriculasOcupadas =
+      await this.matriculaRepository.count({
+        where: {
+          paralelo: {
+            id: paralelo.id,
+          },
+          estado: Not(
+            EstadoMatricula.ANULADA,
+          ),
+        },
+      });
+
+    const cuposDisponibles =
+      paralelo.cupoMaximo -
+      matriculasOcupadas;
+
+    if (cuposDisponibles <= 0) {
+      continue;
+    }
+
+    const matriculaEnPeriodo =
+      await this.matriculaRepository.findOne({
+        where: {
+          estudiante: {
+            id: estudiante.id,
+          },
+          periodo: {
+            id: paralelo.periodoCarrera
+              .periodo.id,
+          },
+        },
+      });
+
+    if (matriculaEnPeriodo) {
+      continue;
+    }
+
+    const solicitudEnPeriodo =
+      await solicitudRepository
+        .createQueryBuilder('solicitud')
+        .leftJoin(
+          'solicitud.estudiante',
+          'estudianteSolicitud',
+        )
+        .leftJoin(
+          'solicitud.periodoCarrera',
+          'ofertaSolicitud',
+        )
+        .leftJoin(
+          'ofertaSolicitud.periodo',
+          'periodoSolicitud',
+        )
+        .where(
+          'estudianteSolicitud.id = :estudianteId',
+          {
+            estudianteId:
+              estudiante.id,
+          },
+        )
+        .andWhere(
+          'periodoSolicitud.id = :periodoId',
+          {
+            periodoId:
+              paralelo.periodoCarrera
+                .periodo.id,
+          },
+        )
+        .getOne();
+
+    if (solicitudEnPeriodo) {
+      continue;
+    }
+
+    const materias =
+      tipoMatricula ===
+      TipoMatricula.REPETICION
+        ? paralelo.asignaturas.filter(
+            (asignaturaParalelo) =>
+              asignaturasReprobadasIds.has(
+                asignaturaParalelo
+                  .detalleMalla.asignatura.id,
+              ),
+          )
+        : paralelo.asignaturas;
+
+    opciones.push({
+      periodoCarreraId:
+        paralelo.periodoCarrera.id,
+
+      periodo: {
+        id:
+          paralelo.periodoCarrera.periodo.id,
+        nombre:
+          paralelo.periodoCarrera.periodo
+            .nombre,
+      },
+
+      carrera: {
+        id:
+          paralelo.periodoCarrera.carrera.id,
+        nombre:
+          paralelo.periodoCarrera.carrera
+            .nombre,
+      },
+
+      versionMalla: {
+        id:
+          paralelo.periodoCarrera
+            .versionMalla.id,
+        nombre:
+          paralelo.periodoCarrera
+            .versionMalla.nombre,
+        version:
+          paralelo.periodoCarrera
+            .versionMalla.version,
+      },
+
+      nivel: {
+        id: paralelo.nivel.id,
+        numero: paralelo.nivel.numero,
+        nombre: paralelo.nivel.nombre,
+      },
+
+      jornada:
+        paralelo.periodoCarrera.jornada,
+
+      centroEstudio:
+        paralelo.periodoCarrera
+          .centroEstudio,
+
+      paralelo: {
+        id: paralelo.id,
+        nombre: paralelo.nombre,
+        cupoMaximo:
+          paralelo.cupoMaximo,
+        cuposOcupados:
+          matriculasOcupadas,
+        cuposDisponibles,
+      },
+
+      materias: materias.map(
+        (asignaturaParalelo) => ({
+          asignaturaParaleloId:
+            asignaturaParalelo.id,
+
+          asignaturaId:
+            asignaturaParalelo
+              .detalleMalla.asignatura.id,
+
+          codigo:
+            asignaturaParalelo
+              .detalleMalla.asignatura.codigo,
+
+          nombre:
+            asignaturaParalelo
+              .detalleMalla.asignatura.nombre,
+
+          docente:
+            `${asignaturaParalelo.docente.nombres} ${asignaturaParalelo.docente.apellidos}`,
+        }),
+      ),
+    });
+  }
+
+  return {
+    puedeSolicitar:
+      opciones.length > 0,
+
+    situacion,
+
+    motivo:
+      opciones.length > 0
+        ? null
+        : 'No existe una oferta académica disponible que cumpla las condiciones del estudiante.',
+
+    tipoMatricula,
+
+    documentoRequerido,
+
+    matriculaAnterior: {
+      id: matriculaAnterior.id,
+      periodo:
+        matriculaAnterior.periodo.nombre,
+      malla:
+        matriculaAnterior.versionMalla.nombre,
+      nivel:
+        matriculaAnterior.nivel.nombre,
+      numeroNivel:
+        matriculaAnterior.nivel.numero,
+      materiasReprobadas:
+        materiasReprobadas.map(
+          (detalle) => ({
+            id:
+              detalle.asignaturaParalelo
+                .detalleMalla.asignatura.id,
+            codigo:
+              detalle.asignaturaParalelo
+                .detalleMalla.asignatura.codigo,
+            nombre:
+              detalle.asignaturaParalelo
+                .detalleMalla.asignatura.nombre,
+            promedio:
+              detalle.promedioFinal,
+          }),
+        ),
+    },
+
+    opciones,
+  };
+}
+
+async opcionesPermitidas(
+  usuarioId: string,
+) {
+  const estudiante =
+    await this.estudianteRepository.findOne({
+      where: {
+        usuario: {
+          id: usuarioId,
+        },
+      },
+  });
+
+  if (!estudiante) {
+    throw new NotFoundException(
+      'No existe una ficha de estudiante vinculada con tu cuenta.',
+    );
+  }
+
+  return this.calcularOpcionesPermitidas(
+    estudiante,
+  );
+}
+
+async validarOpcionSolicitud(
+  estudianteId: string,
+  periodoCarreraId: string,
+  paraleloId: string,
+) {
+  const estudiante =
+    await this.estudianteRepository.findOne({
+      where: {
+        id: estudianteId,
+      },
+    });
+
+  if (!estudiante) {
+    throw new NotFoundException(
+      'Estudiante no encontrado.',
+    );
+  }
+
+  const resultado =
+    await this.calcularOpcionesPermitidas(
+      estudiante,
+    );
+
+  if (!resultado.puedeSolicitar) {
+    throw new BadRequestException(
+      resultado.motivo ??
+        'No puedes realizar una solicitud de matrícula.',
+    );
+  }
+
+  const opcionValida =
+    resultado.opciones.find(
+      (opcion: any) =>
+        opcion.periodoCarreraId ===
+          periodoCarreraId &&
+        opcion.paralelo.id ===
+          paraleloId,
+    );
+
+  if (!opcionValida) {
+    throw new BadRequestException(
+      'La oferta, nivel o paralelo seleccionado no está permitido para este estudiante.',
+    );
+  }
+
+  return opcionValida;
 }
 
   findAll(filtros?: {

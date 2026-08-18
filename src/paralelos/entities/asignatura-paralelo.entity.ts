@@ -9,8 +9,8 @@ export class AsignaturaParalelo {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => Paralelo, { eager: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'paralelo_id' })
+  @ManyToOne(
+  () => Paralelo, (paralelo) => paralelo.asignaturas, { eager: true, onDelete: 'CASCADE',})
   paralelo!: Paralelo;
 
   @ManyToOne(() => DetalleMalla, { eager: true, onDelete: 'RESTRICT' })
