@@ -1,348 +1,645 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException,} from '@nestjs/common';
+import {BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { SolicitudMatricula, EstadoSolicitud } from './entities/solicitud-matricula.entity';
+import { DataSource, Repository } from 'typeorm';
+import { EstadoSolicitud, SolicitudMatricula } from './entities/solicitud-matricula.entity';
 import { CreateSolicitudMatriculaDto } from './dto/create-solicitud-matricula.dto';
-import { RechazarSolicitudDto } from './dto/rechazar-solicitud.dto';
 import { EstudiantesService } from '../estudiantes/estudiantes.service';
 import { PeriodoCarreraService } from '../periodo-carrera/periodo-carrera.service';
 import { ParaleloService } from '../paralelos/paralelo.service';
+import { MatriculasService } from '../matriculas/matriculas.service';
+
+import { DocumentoMatricula, EstadoDocumentoMatricula, TipoDocumentoMatricula } from '../documentos-matricula/entities/documento-matricula.entity';
+
+interface ArchivosSolicitudUrls {
+  cedulaUrl?: string;
+  certificadoNoAdeudarUrl?: string;
+  comprobantePagoUrl?: string;
+}
 
 @Injectable()
 export class SolicitudesMatriculaService {
   constructor(
     @InjectRepository(SolicitudMatricula)
-    private readonly repo: Repository<SolicitudMatricula>,
-    private readonly estudiantesService: EstudiantesService,
-    private readonly periodoCarreraService: PeriodoCarreraService,
-    private readonly paraleloService: ParaleloService,
+    private readonly repo:
+      Repository<SolicitudMatricula>,
+
+    private readonly estudiantesService:
+      EstudiantesService,
+
+    private readonly periodoCarreraService:
+      PeriodoCarreraService,
+
+    private readonly paraleloService:
+      ParaleloService,
+
+    private readonly matriculasService:
+      MatriculasService,
+
+    private readonly dataSource: DataSource,
   ) {}
 
-  private async getEstudianteDelUsuario(usuarioId: string) {
-    const estudiante = await this.estudiantesService.findByUsuarioId(usuarioId);
+  private async getEstudianteDelUsuario(
+    usuarioId: string,
+  ) {
+    const estudiante =
+      await this.estudiantesService
+        .findByUsuarioId(usuarioId);
+
     if (!estudiante) {
       throw new NotFoundException(
-        'No existe una ficha de estudiante asociada a tu usuario. Acércate a secretaría para que te matriculen en el sistema.',
+        'No existe una ficha de estudiante vinculada con tu cuenta.',
       );
     }
+
     return estudiante;
   }
 
-  private async contarCuposOcupados(paraleloId: string) {
+  private contarCuposAprobados(
+    paraleloId: string,
+  ) {
     return this.repo.count({
-      where: { paralelo: { id: paraleloId }, estado: EstadoSolicitud.APROBADA },
+      where: {
+        paralelo: {
+          id: paraleloId,
+        },
+        estado: EstadoSolicitud.APROBADA,
+      },
     });
   }
 
-  // ---------- ESTUDIANTE: crear su solicitud (1 vez por periodo) ----------
   async crear(
     usuarioId: string,
     dto: CreateSolicitudMatriculaDto,
-    archivoCedulaUrl: string,
-    archivoNoAdeudarUrl: string,
+    archivos: ArchivosSolicitudUrls,
   ) {
-    const estudiante = await this.getEstudianteDelUsuario(usuarioId);
-    const periodoCarrera = await this.periodoCarreraService.findOne(dto.periodoCarreraId);
-    const paralelo = await this.paraleloService.findOne(dto.paraleloId);
+    const estudiante =
+      await this.getEstudianteDelUsuario(
+        usuarioId,
+      );
 
-    if (paralelo.periodoCarrera.id !== periodoCarrera.id) {
+    const periodoCarrera =
+      await this.periodoCarreraService.findOne(
+        dto.periodoCarreraId,
+      );
+
+    const paralelo =
+      await this.paraleloService.findOne(
+        dto.paraleloId,
+      );
+
+    if (
+      paralelo.periodoCarrera.id !==
+      periodoCarrera.id
+    ) {
       throw new BadRequestException(
-        'El paralelo seleccionado no pertenece a la carrera/periodo indicado.',
+        'El paralelo no pertenece a la oferta académica seleccionada.',
       );
     }
 
-    const yaExiste = await this.repo.findOne({
-      where: {
-        estudiante: { id: estudiante.id },
-        periodoCarrera: { id: periodoCarrera.id },
-      },
-    });
-    if (yaExiste) {
+    /*
+     * No se permite tener dos solicitudes en el mismo periodo
+     * académico aunque correspondan a ofertas diferentes.
+     */
+    const solicitudExistente = await this.repo
+      .createQueryBuilder('solicitud')
+      .leftJoin(
+        'solicitud.estudiante',
+        'estudiante',
+      )
+      .leftJoin(
+        'solicitud.periodoCarrera',
+        'periodoCarrera',
+      )
+      .leftJoin(
+        'periodoCarrera.periodo',
+        'periodo',
+      )
+      .where(
+        'estudiante.id = :estudianteId',
+        {
+          estudianteId: estudiante.id,
+        },
+      )
+      .andWhere(
+        'periodo.id = :periodoId',
+        {
+          periodoId:
+            periodoCarrera.periodo.id,
+        },
+      )
+      .getOne();
+
+    if (solicitudExistente) {
       throw new ConflictException(
-        'Ya enviaste una solicitud de matrícula para este periodo. Si fue rechazada, debes reenviarla en lugar de crear una nueva.',
+        `Ya tienes una solicitud registrada para el periodo "${periodoCarrera.periodo.nombre}".`,
       );
     }
 
-    const ocupados = await this.contarCuposOcupados(paralelo.id);
+    const requisito =
+      await this.matriculasService
+        .obtenerRequisitoDocumento(
+          estudiante.id,
+        );
+
+    if (!archivos.cedulaUrl) {
+      throw new BadRequestException(
+        'La copia de cédula es obligatoria.',
+      );
+    }
+
+    if (
+      requisito ===
+        TipoDocumentoMatricula.CERTIFICADO_NO_ADEUDAR &&
+      !archivos.certificadoNoAdeudarUrl
+    ) {
+      throw new BadRequestException(
+        'Como aprobaste todas las materias, debes presentar el certificado de no adeudar.',
+      );
+    }
+
+    if (
+      requisito ===
+        TipoDocumentoMatricula.COMPROBANTE_PAGO &&
+      !archivos.comprobantePagoUrl
+    ) {
+      throw new BadRequestException(
+        'Como tienes materias reprobadas, debes presentar el comprobante de pago.',
+      );
+    }
+
+    if (
+      requisito ===
+        TipoDocumentoMatricula.CERTIFICADO_NO_ADEUDAR &&
+      archivos.comprobantePagoUrl
+    ) {
+      throw new BadRequestException(
+        'Debes presentar el certificado de no adeudar, no un comprobante de pago.',
+      );
+    }
+
+    if (
+      requisito ===
+        TipoDocumentoMatricula.COMPROBANTE_PAGO &&
+      archivos.certificadoNoAdeudarUrl
+    ) {
+      throw new BadRequestException(
+        'Debes presentar el comprobante de pago por las materias reprobadas.',
+      );
+    }
+
+    const ocupados =
+      await this.contarCuposAprobados(
+        paralelo.id,
+      );
+
     if (ocupados >= paralelo.cupoMaximo) {
       throw new ConflictException(
-        `El paralelo "${paralelo.nombre}" ya no tiene cupos disponibles (${ocupados}/${paralelo.cupoMaximo}).`,
+        `El paralelo "${paralelo.nombre}" ya no tiene cupos disponibles.`,
       );
     }
 
-    const nueva = this.repo.create({
-      estudiante,
-      periodoCarrera,
-      paralelo,
-      archivoCedulaUrl,
-      archivoNoAdeudarUrl,
-      estado: EstadoSolicitud.PENDIENTE,
-      puedeReenviar: false,
-    });
+    return this.dataSource.transaction(
+      async (manager) => {
+        const solicitudRepository =
+          manager.getRepository(
+            SolicitudMatricula,
+          );
 
-    return this.repo.save(nueva);
+        const documentoRepository =
+          manager.getRepository(
+            DocumentoMatricula,
+          );
+
+        const nuevaSolicitud =
+          solicitudRepository.create({
+            estudiante,
+            periodoCarrera,
+            paralelo,
+            estado:
+              EstadoSolicitud.PENDIENTE,
+            puedeReenviar: false,
+          });
+
+        const solicitudGuardada =
+          await solicitudRepository.save(
+            nuevaSolicitud,
+          );
+
+        const documentos:
+          DocumentoMatricula[] = [
+            documentoRepository.create({
+              solicitud: solicitudGuardada,
+              tipo:
+                TipoDocumentoMatricula.CEDULA,
+              archivoUrl:
+                archivos.cedulaUrl,
+              estado:
+                EstadoDocumentoMatricula.PENDIENTE,
+            }),
+          ];
+
+        if (
+          requisito ===
+          TipoDocumentoMatricula
+            .CERTIFICADO_NO_ADEUDAR
+        ) {
+          documentos.push(
+            documentoRepository.create({
+              solicitud: solicitudGuardada,
+              tipo:
+                TipoDocumentoMatricula
+                  .CERTIFICADO_NO_ADEUDAR,
+              archivoUrl:
+                archivos
+                  .certificadoNoAdeudarUrl!,
+              estado:
+                EstadoDocumentoMatricula
+                  .PENDIENTE,
+            }),
+          );
+        } else {
+          documentos.push(
+            documentoRepository.create({
+              solicitud: solicitudGuardada,
+              tipo:
+                TipoDocumentoMatricula
+                  .COMPROBANTE_PAGO,
+              archivoUrl:
+                archivos.comprobantePagoUrl!,
+              estado:
+                EstadoDocumentoMatricula
+                  .PENDIENTE,
+            }),
+          );
+        }
+
+        await documentoRepository.save(
+          documentos,
+        );
+
+        return solicitudRepository.findOne({
+          where: {
+            id: solicitudGuardada.id,
+          },
+          relations: {
+            documentos: true,
+          },
+        });
+      },
+    );
   }
 
-  // ---------- ESTUDIANTE: reenviar tras un rechazo (candado de 1 sola vez) ----------
   async reenviar(
     usuarioId: string,
     solicitudId: string,
-    archivoCedulaUrl: string | null,
-    archivoNoAdeudarUrl: string | null,
+    archivos: ArchivosSolicitudUrls,
   ) {
-    const solicitud = await this.findOneOrFail(solicitudId);
-    const estudiante = await this.getEstudianteDelUsuario(usuarioId);
-
-    if (solicitud.estudiante.id !== estudiante.id) {
-      throw new ForbiddenException('No puedes editar la solicitud de otro estudiante.');
-    }
-    if (solicitud.estado !== EstadoSolicitud.RECHAZADA || !solicitud.puedeReenviar) {
-      throw new BadRequestException(
-        'Esta solicitud no está disponible para reenvío en este momento.',
+    const estudiante =
+      await this.getEstudianteDelUsuario(
+        usuarioId,
       );
-    }
 
-    if (archivoCedulaUrl) solicitud.archivoCedulaUrl = archivoCedulaUrl;
-    if (archivoNoAdeudarUrl) solicitud.archivoNoAdeudarUrl = archivoNoAdeudarUrl;
-    solicitud.estado = EstadoSolicitud.PENDIENTE;
-    solicitud.puedeReenviar = false;
-    solicitud.motivoRechazo = undefined;
+    return this.dataSource.transaction(
+      async (manager) => {
+        const solicitudRepository =
+          manager.getRepository(
+            SolicitudMatricula,
+          );
 
-    return this.repo.save(solicitud);
-  }
+        const documentoRepository =
+          manager.getRepository(
+            DocumentoMatricula,
+          );
 
-  // ---------- ESTUDIANTE: ver sus propias solicitudes ----------
-  misSolicitudes(usuarioId: string) {
-    return this.getEstudianteDelUsuario(usuarioId).then((estudiante) =>
-      this.repo.find({
-        where: { estudiante: { id: estudiante.id } },
-        order: { fechaEnvio: 'DESC' },
-      }),
-    );
-  }
+        const solicitud =
+          await solicitudRepository.findOne({
+            where: {
+              id: solicitudId,
+            },
+            relations: {
+              estudiante: true,
+              documentos: true,
+            },
+          });
 
-  // ---------- ESTUDIANTE: "Mi Matrícula" -> su solicitud APROBADA más reciente ----------
-  async miMatriculaVigente(usuarioId: string) {
-    const estudiante = await this.getEstudianteDelUsuario(usuarioId);
-    const matricula = await this.repo.findOne({
-      where: { estudiante: { id: estudiante.id }, estado: EstadoSolicitud.APROBADA },
-      order: { fechaEnvio: 'DESC' },
-    });
-    if (!matricula) {
-      throw new NotFoundException('Todavía no tienes una matrícula aprobada en ningún periodo.');
-    }
-    return matricula;
-  }
+        if (!solicitud) {
+          throw new NotFoundException(
+            'Solicitud no encontrada.',
+          );
+        }
 
-  // ---------- SECRETARIA/ADMIN: listar con filtros ----------
- async findAll(filtros?: {
-  periodoCarreraId?: string;
-  carreraId?: string;
-  periodoId?: string;
-  paraleloId?: string;
-  estado?: EstadoSolicitud;
-  busqueda?: string;
-}) {
-  const qb = this.repo
-    .createQueryBuilder('s')
-    .leftJoinAndSelect('s.estudiante', 'estudiante')
-    .leftJoinAndSelect('s.periodoCarrera', 'periodoCarrera')
-    .leftJoinAndSelect('periodoCarrera.periodo', 'periodo')
-    .leftJoinAndSelect('periodoCarrera.carrera', 'carrera')
-    .leftJoinAndSelect('periodoCarrera.centroEstudio', 'centroEstudio')
-    .leftJoinAndSelect('s.paralelo', 'paralelo')
-    .leftJoinAndSelect('paralelo.nivel', 'nivel')
-    .orderBy('s.fechaEnvio', 'DESC');
+        if (
+          solicitud.estudiante.id !==
+          estudiante.id
+        ) {
+          throw new ForbiddenException(
+            'No puedes modificar la solicitud de otro estudiante.',
+          );
+        }
 
-  if (filtros?.periodoCarreraId) {
-    qb.andWhere('periodoCarrera.id = :periodoCarreraId', {
-      periodoCarreraId: filtros.periodoCarreraId,
-    });
-  }
+        if (
+          solicitud.estado !==
+            EstadoSolicitud.RECHAZADA ||
+          !solicitud.puedeReenviar
+        ) {
+          throw new BadRequestException(
+            'La solicitud no está disponible para reenvío.',
+          );
+        }
 
-  if (filtros?.carreraId) {
-    qb.andWhere('carrera.id = :carreraId', {
-      carreraId: filtros.carreraId,
-    });
-  }
+        const urlsPorTipo = new Map<
+          TipoDocumentoMatricula,
+          string | undefined
+        >([
+          [
+            TipoDocumentoMatricula.CEDULA,
+            archivos.cedulaUrl,
+          ],
+          [
+            TipoDocumentoMatricula
+              .CERTIFICADO_NO_ADEUDAR,
+            archivos
+              .certificadoNoAdeudarUrl,
+          ],
+          [
+            TipoDocumentoMatricula
+              .COMPROBANTE_PAGO,
+            archivos.comprobantePagoUrl,
+          ],
+        ]);
 
-  if (filtros?.periodoId) {
-    qb.andWhere('periodo.id = :periodoId', {
-      periodoId: filtros.periodoId,
-    });
-  }
+        const documentosRechazados =
+          solicitud.documentos.filter(
+            (documento) =>
+              documento.estado ===
+              EstadoDocumentoMatricula
+                .RECHAZADO,
+          );
 
-  if (filtros?.paraleloId) {
-    qb.andWhere('paralelo.id = :paraleloId', {
-      paraleloId: filtros.paraleloId,
-    });
-  }
+        if (
+          documentosRechazados.length === 0
+        ) {
+          throw new BadRequestException(
+            'La solicitud no tiene documentos rechazados.',
+          );
+        }
 
-  if (filtros?.estado) {
-    qb.andWhere('s.estado = :estado', {
-      estado: filtros.estado,
-    });
-  }
+        for (
+          const documento of
+          documentosRechazados
+        ) {
+          const nuevaUrl =
+            urlsPorTipo.get(documento.tipo);
 
-  if (filtros?.busqueda) {
-    qb.andWhere(
-      `(estudiante.cedula ILIKE :busqueda
-        OR estudiante.nombres ILIKE :busqueda
-        OR estudiante.apellidos ILIKE :busqueda)`,
-      {
-        busqueda: `%${filtros.busqueda}%`,
+          if (!nuevaUrl) {
+            throw new BadRequestException(
+              `Debes volver a subir el documento rechazado: ${documento.tipo}.`,
+            );
+          }
+
+          documento.archivoUrl = nuevaUrl;
+          documento.estado =
+            EstadoDocumentoMatricula.PENDIENTE;
+
+          documento.motivoRechazo = null;
+          documento.revisadoPor = null;
+          documento.fechaRevision = null;
+
+          await documentoRepository.save(
+            documento,
+          );
+        }
+
+        solicitud.estado =
+          EstadoSolicitud.PENDIENTE;
+
+        solicitud.motivoRechazo =
+          undefined;
+
+        solicitud.puedeReenviar = false;
+
+        await solicitudRepository.save(
+          solicitud,
+        );
+
+        return solicitudRepository.findOne({
+          where: {
+            id: solicitud.id,
+          },
+          relations: {
+            documentos: true,
+          },
+        });
       },
     );
   }
 
-  return qb.getMany();
-}
-  findPendientes() {
-    return this.findAll({ estado: EstadoSolicitud.PENDIENTE });
+  async misSolicitudes(
+    usuarioId: string,
+  ) {
+    const estudiante =
+      await this.getEstudianteDelUsuario(
+        usuarioId,
+      );
+
+    return this.repo.find({
+      where: {
+        estudiante: {
+          id: estudiante.id,
+        },
+      },
+      relations: {
+        documentos: true,
+        matricula: true,
+      },
+      order: {
+        fechaEnvio: 'DESC',
+      },
+    });
   }
 
-  async findOneOrFail(id: string) {
-    const solicitud = await this.repo.findOne({ where: { id } });
+  async miMatriculaVigente(
+    usuarioId: string,
+  ) {
+    const estudiante =
+      await this.getEstudianteDelUsuario(
+        usuarioId,
+      );
+
+    const solicitud =
+      await this.repo.findOne({
+        where: {
+          estudiante: {
+            id: estudiante.id,
+          },
+          estado:
+            EstadoSolicitud.APROBADA,
+        },
+        relations: {
+          documentos: true,
+          matricula: true,
+        },
+        order: {
+          fechaEnvio: 'DESC',
+        },
+      });
+
     if (!solicitud) {
-      throw new NotFoundException(`Solicitud de matrícula con ID ${id} no encontrada.`);
+      throw new NotFoundException(
+        'Todavía no tienes una matrícula aprobada.',
+      );
     }
+
     return solicitud;
   }
 
-  // ---------- SECRETARIA: aprobar ----------
-  async aprobar(id: string) {
-    const solicitud = await this.findOneOrFail(id);
-    if (solicitud.estado !== EstadoSolicitud.PENDIENTE) {
-      throw new BadRequestException('Solo se pueden aprobar solicitudes en estado PENDIENTE.');
-    }
+  async findAll(filtros?: {
+    periodoCarreraId?: string;
+    carreraId?: string;
+    periodoId?: string;
+    paraleloId?: string;
+    estado?: EstadoSolicitud;
+    busqueda?: string;
+  }) {
+    const query = this.repo
+      .createQueryBuilder('solicitud')
+      .leftJoinAndSelect(
+        'solicitud.estudiante',
+        'estudiante',
+      )
+      .leftJoinAndSelect(
+        'solicitud.periodoCarrera',
+        'periodoCarrera',
+      )
+      .leftJoinAndSelect(
+        'periodoCarrera.periodo',
+        'periodo',
+      )
+      .leftJoinAndSelect(
+        'periodoCarrera.carrera',
+        'carrera',
+      )
+      .leftJoinAndSelect(
+        'periodoCarrera.centroEstudio',
+        'centroEstudio',
+      )
+      .leftJoinAndSelect(
+        'periodoCarrera.versionMalla',
+        'versionMalla',
+      )
+      .leftJoinAndSelect(
+        'solicitud.paralelo',
+        'paralelo',
+      )
+      .leftJoinAndSelect(
+        'paralelo.nivel',
+        'nivel',
+      )
+      .leftJoinAndSelect(
+        'solicitud.documentos',
+        'documentos',
+      )
+      .leftJoinAndSelect(
+        'solicitud.matricula',
+        'matricula',
+      )
+      .orderBy(
+        'solicitud.fechaEnvio',
+        'DESC',
+      );
 
-    const ocupados = await this.contarCuposOcupados(solicitud.paralelo.id);
-    if (ocupados >= solicitud.paralelo.cupoMaximo) {
-      throw new ConflictException(
-        `No se puede aprobar: el paralelo "${solicitud.paralelo.nombre}" ya no tiene cupos disponibles.`,
+    if (filtros?.periodoCarreraId) {
+      query.andWhere(
+        'periodoCarrera.id = :periodoCarreraId',
+        {
+          periodoCarreraId:
+            filtros.periodoCarreraId,
+        },
       );
     }
 
-    solicitud.estado = EstadoSolicitud.APROBADA;
-    solicitud.puedeReenviar = false;
-    solicitud.motivoRechazo = undefined;
-    return this.repo.save(solicitud);
-  }
-
-  // ---------- SECRETARIA: rechazar (con motivo obligatorio) ----------
-  async rechazar(id: string, dto: RechazarSolicitudDto) {
-    const solicitud = await this.findOneOrFail(id);
-    if (solicitud.estado !== EstadoSolicitud.PENDIENTE) {
-      throw new BadRequestException('Solo se pueden rechazar solicitudes en estado PENDIENTE.');
+    if (filtros?.carreraId) {
+      query.andWhere(
+        'carrera.id = :carreraId',
+        {
+          carreraId:
+            filtros.carreraId,
+        },
+      );
     }
 
-    solicitud.estado = EstadoSolicitud.RECHAZADA;
-    solicitud.motivoRechazo = dto.motivoRechazo;
-    solicitud.puedeReenviar = true;
-    return this.repo.save(solicitud);
+    if (filtros?.periodoId) {
+      query.andWhere(
+        'periodo.id = :periodoId',
+        {
+          periodoId: filtros.periodoId,
+        },
+      );
+    }
+
+    if (filtros?.paraleloId) {
+      query.andWhere(
+        'paralelo.id = :paraleloId',
+        {
+          paraleloId:
+            filtros.paraleloId,
+        },
+      );
+    }
+
+    if (filtros?.estado) {
+      query.andWhere(
+        'solicitud.estado = :estado',
+        {
+          estado: filtros.estado,
+        },
+      );
+    }
+
+    if (filtros?.busqueda) {
+      query.andWhere(
+        `(
+          estudiante.cedula ILIKE :busqueda
+          OR estudiante.nombres ILIKE :busqueda
+          OR estudiante.apellidos ILIKE :busqueda
+        )`,
+        {
+          busqueda:
+            `%${filtros.busqueda}%`,
+        },
+      );
+    }
+
+    return query.getMany();
   }
 
-  async obtenerEstudiantesParaNotas(filtros: {
-  periodoCarreraId?: string;
-  nivelId?: string;
-  paraleloId?: string;
-}) {
-  const qb = this.repo
-    .createQueryBuilder('solicitud')
+  findPendientes() {
+    return this.findAll({
+      estado:
+        EstadoSolicitud.PENDIENTE,
+    });
+  }
 
-    // Estudiante
-    .innerJoinAndSelect(
-      'solicitud.estudiante',
-      'estudiante',
-    )
-
-    // Periodo + carrera
-    .innerJoinAndSelect(
-      'solicitud.periodoCarrera',
-      'periodoCarrera',
-    )
-
-    .innerJoinAndSelect(
-      'periodoCarrera.periodo',
-      'periodo',
-    )
-
-    .innerJoinAndSelect(
-      'periodoCarrera.carrera',
-      'carrera',
-    )
-
-    // Paralelo + nivel
-    .innerJoinAndSelect(
-      'solicitud.paralelo',
-      'paralelo',
-    )
-
-    .innerJoinAndSelect(
-      'paralelo.nivel',
-      'nivel',
-    )
-
-    // SOLO MATRÍCULAS APROBADAS
-    .where('solicitud.estado = :estado', {
-      estado: EstadoSolicitud.APROBADA,
+  async findOneOrFail(id: string) {
+    const solicitud = await this.repo.findOne({
+      where: { id },
+      relations: {
+        documentos: true,
+        matricula: true,
+      },
     });
 
-  if (filtros.periodoCarreraId) {
-    qb.andWhere(
-      'periodoCarrera.id = :periodoCarreraId',
-      {
-        periodoCarreraId: filtros.periodoCarreraId,
-      },
-    );
+    if (!solicitud) {
+      throw new NotFoundException(
+        `Solicitud con ID ${id} no encontrada.`,
+      );
+    }
+
+    return solicitud;
   }
 
-  if (filtros.nivelId) {
-    qb.andWhere(
-      'nivel.id = :nivelId',
-      {
-        nivelId: filtros.nivelId,
-      },
-    );
+  async aprobar(id: string) {
+    return this.matriculasService
+      .crearDesdeSolicitud(id);
   }
-
-  if (filtros.paraleloId) {
-    qb.andWhere(
-      'paralelo.id = :paraleloId',
-      {
-        paraleloId: filtros.paraleloId,
-      },
-    );
-  }
-
-  const solicitudes = await qb
-    .orderBy('estudiante.apellidos', 'ASC')
-    .addOrderBy('estudiante.nombres', 'ASC')
-    .getMany();
-
-  return solicitudes.map((solicitud) => ({
-    estudianteId: solicitud.estudiante.id,
-    cedula: solicitud.estudiante.cedula,
-    nombres: solicitud.estudiante.nombres,
-    apellidos: solicitud.estudiante.apellidos,
-    correo: solicitud.estudiante.correo,
-    telefono: solicitud.estudiante.telefono,
-
-    carrera: solicitud.periodoCarrera.carrera.nombre,
-    carreraId: solicitud.periodoCarrera.carrera.id,
-
-    periodo: solicitud.periodoCarrera.periodo.nombre,
-    periodoId: solicitud.periodoCarrera.periodo.id,
-
-    nivel: solicitud.paralelo.nivel.nombre,
-    nivelId: solicitud.paralelo.nivel.id,
-
-    paralelo: solicitud.paralelo.nombre,
-    paraleloId: solicitud.paralelo.id,
-
-    jornada: solicitud.periodoCarrera.jornada,
-    
-    solicitudId: solicitud.id,
-  }));
-}
 }

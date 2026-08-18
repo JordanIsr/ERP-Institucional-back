@@ -14,6 +14,9 @@ import { ParalelosModule } from './paralelos/paralelos.module';
 import { AulaModule } from './aula/aula.module';
 import { CentrosEstudioModule } from './centros-estudio/centros-estudio.module';
 import { SolicitudesMatriculaModule} from './solicitudes-matricula/solicitudes-matricula.module';
+import { MatriculasModule } from './matriculas/matriculas.module';
+import { CalificacionesModule } from './calificaciones/calificaciones.module';
+import { DocumentosMatriculaModule } from './documentos-matricula/documentos-matricula.module';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { SolicitudesMatriculaModule} from './solicitudes-matricula/solicitudes-m
     ParalelosModule,
     CentrosEstudioModule,
     SolicitudesMatriculaModule,
+    MatriculasModule,
+    CalificacionesModule,
+    DocumentosMatriculaModule
   ],
 })
 export class AppModule {}

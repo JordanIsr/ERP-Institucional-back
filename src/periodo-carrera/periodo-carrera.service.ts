@@ -1,15 +1,17 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PeriodoCarrera } from './entities/periodo-carrera.entity';
+import { Not, Repository } from 'typeorm';
+import { EstadoPeriodoCarrera, PeriodoCarrera } from './entities/periodo-carrera.entity';
 import { CreatePeriodoCarreraDto } from './dto/create-periodo-carrera.dto';
 import { UpdatePeriodoCarreraDto } from './dto/update-periodo-carrera.dto';
+
 import { PeriodosService } from '../periodos/periodos.service';
 import { CarrerasService } from '../carreras/carreras.service';
 import { VersionMallaService } from '../mallas/version-malla.service';
-import { EstadoVersionMalla } from '../mallas/entities/version-malla.entity';
-import { EstadoPeriodo } from '../periodos/entities/periodo-academico.entity';
 import { CentrosEstudioService } from '../centros-estudio/centros-estudio.service';
+
+import { EstadoPeriodo } from '../periodos/entities/periodo-academico.entity';
+import { EstadoVersionMalla } from '../mallas/entities/version-malla.entity';
 
 @Injectable()
 export class PeriodoCarreraService {
@@ -25,18 +27,32 @@ export class PeriodoCarreraService {
   async create(dto: CreatePeriodoCarreraDto) {
     const periodo = await this.periodosService.findOne(dto.periodoId);
     const carrera = await this.carrerasService.findOne(dto.carreraId);
-    const versionMalla = await this.versionMallaService.findOne(dto.versionMallaId);
-    const centroEstudio = await this.centrosEstudioService.findOne(dto.centroEstudioId);
+    const versionMalla = await this.versionMallaService.findOne(
+      dto.versionMallaId,
+    );
+    const centroEstudio = await this.centrosEstudioService.findOne(
+      dto.centroEstudioId,
+    );
 
     if (periodo.estado === EstadoPeriodo.CERRADO) {
       throw new BadRequestException(
-        `No se puede crear el registro: el periodo "${periodo.nombre}" ya está CERRADO.`,
+        `El periodo "${periodo.nombre}" está cerrado.`,
       );
     }
 
-    if (versionMalla.estado !== EstadoVersionMalla.ACTIVA) {
+    if (versionMalla.carrera.id !== carrera.id) {
       throw new BadRequestException(
-        `No se puede usar la malla "${versionMalla.nombre}" porque su estado es ${versionMalla.estado}. Solo se permiten mallas ACTIVA.`,
+        `La malla "${versionMalla.nombre}" no pertenece a la carrera "${carrera.nombre}".`,
+      );
+    }
+
+    /*
+     * Una malla histórica puede seguir utilizándose para estudiantes
+     * de cohortes antiguas. Una malla PRÓXIMA todavía no puede ofertarse.
+     */
+    if (versionMalla.estado === EstadoVersionMalla.PROXIMA) {
+      throw new BadRequestException(
+        `La malla "${versionMalla.nombre}" todavía está en estado PRÓXIMA.`,
       );
     }
 
@@ -44,71 +60,153 @@ export class PeriodoCarreraService {
       where: {
         periodo: { id: periodo.id },
         carrera: { id: carrera.id },
+        versionMalla: { id: versionMalla.id },
         jornada: dto.jornada,
         centroEstudio: { id: centroEstudio.id },
       },
     });
+
     if (existe) {
       throw new ConflictException(
-        `Ya existe un registro para "${carrera.nombre}" en el periodo "${periodo.nombre}" con jornada ${dto.jornada} en el centro "${centroEstudio.nombre}".`,
+        'Ya existe esta oferta académica para el periodo, carrera, malla, jornada y centro seleccionados.',
       );
     }
 
-    const nuevo = this.periodoCarreraRepository.create({
+    const nuevaOferta = this.periodoCarreraRepository.create({
       periodo,
       carrera,
       versionMalla,
       centroEstudio,
       jornada: dto.jornada,
+      estado: EstadoPeriodoCarrera.ACTIVA,
     });
 
-    return this.periodoCarreraRepository.save(nuevo);
+    return this.periodoCarreraRepository.save(nuevaOferta);
   }
 
-  findAll(filtros?: { periodoId?: string; carreraId?: string }) {
-    const where: any = {};
-    if (filtros?.periodoId) where.periodo = { id: filtros.periodoId };
-    if (filtros?.carreraId) where.carrera = { id: filtros.carreraId };
+  findAll(filtros?: {
+    periodoId?: string;
+    carreraId?: string;
+    versionMallaId?: string;
+    estado?: EstadoPeriodoCarrera;
+  }) {
+    const query = this.periodoCarreraRepository
+      .createQueryBuilder('oferta')
+      .leftJoinAndSelect('oferta.periodo', 'periodo')
+      .leftJoinAndSelect('oferta.carrera', 'carrera')
+      .leftJoinAndSelect('oferta.versionMalla', 'versionMalla')
+      .leftJoinAndSelect('oferta.centroEstudio', 'centroEstudio');
 
-    return this.periodoCarreraRepository.find({
-      where: Object.keys(where).length ? where : undefined,
-      order: { jornada: 'ASC' },
-    });
+    if (filtros?.periodoId) {
+      query.andWhere('periodo.id = :periodoId', {
+        periodoId: filtros.periodoId,
+      });
+    }
+
+    if (filtros?.carreraId) {
+      query.andWhere('carrera.id = :carreraId', {
+        carreraId: filtros.carreraId,
+      });
+    }
+
+    if (filtros?.versionMallaId) {
+      query.andWhere('versionMalla.id = :versionMallaId', {
+        versionMallaId: filtros.versionMallaId,
+      });
+    }
+
+    if (filtros?.estado) {
+      query.andWhere('oferta.estado = :estado', {
+        estado: filtros.estado,
+      });
+    }
+
+    return query
+      .orderBy('periodo.fechaInicio', 'DESC')
+      .addOrderBy('carrera.nombre', 'ASC')
+      .addOrderBy('versionMalla.version', 'ASC')
+      .addOrderBy('oferta.jornada', 'ASC')
+      .getMany();
   }
 
   async findOne(id: string) {
-    const registro = await this.periodoCarreraRepository.findOne({ where: { id } });
-    if (!registro) {
-      throw new NotFoundException(`Registro de PeriodoCarrera con ID ${id} no encontrado.`);
+    const oferta = await this.periodoCarreraRepository.findOne({
+      where: { id },
+    });
+
+    if (!oferta) {
+      throw new NotFoundException(
+        `La oferta académica con ID ${id} no fue encontrada.`,
+      );
     }
-    return registro;
+
+    return oferta;
   }
 
   async update(id: string, dto: UpdatePeriodoCarreraDto) {
-    const registro = await this.findOne(id);
+    const oferta = await this.findOne(id);
 
-    let versionMalla = registro.versionMalla;
-    if (dto.versionMallaId && dto.versionMallaId !== registro.versionMalla.id) {
-      versionMalla = await this.versionMallaService.findOne(dto.versionMallaId);
-      if (versionMalla.estado !== EstadoVersionMalla.ACTIVA) {
+    let versionMalla = oferta.versionMalla;
+
+    if (
+      dto.versionMallaId &&
+      dto.versionMallaId !== oferta.versionMalla.id
+    ) {
+      versionMalla = await this.versionMallaService.findOne(
+        dto.versionMallaId,
+      );
+
+      if (versionMalla.carrera.id !== oferta.carrera.id) {
         throw new BadRequestException(
-          `No se puede usar la malla "${versionMalla.nombre}" porque su estado es ${versionMalla.estado}. Solo se permiten mallas ACTIVA.`,
+          'La nueva malla no pertenece a la carrera de esta oferta.',
+        );
+      }
+
+      if (versionMalla.estado === EstadoVersionMalla.PROXIMA) {
+        throw new BadRequestException(
+          'No se puede utilizar una malla que todavía está en estado PRÓXIMA.',
         );
       }
     }
 
-    await this.periodoCarreraRepository.save({
-      ...registro,
-      jornada: dto.jornada ?? registro.jornada,
-      versionMalla,
+    const jornada = dto.jornada ?? oferta.jornada;
+
+    const duplicada = await this.periodoCarreraRepository.findOne({
+      where: {
+        id: Not(id),
+        periodo: { id: oferta.periodo.id },
+        carrera: { id: oferta.carrera.id },
+        versionMalla: { id: versionMalla.id },
+        jornada,
+        centroEstudio: { id: oferta.centroEstudio.id },
+      },
     });
 
-    return this.findOne(id);
+    if (duplicada) {
+      throw new ConflictException(
+        'Ya existe otra oferta con la misma combinación de periodo, carrera, malla, jornada y centro.',
+      );
+    }
+
+    oferta.versionMalla = versionMalla;
+    oferta.jornada = jornada;
+    oferta.estado = dto.estado ?? oferta.estado;
+
+    return this.periodoCarreraRepository.save(oferta);
   }
 
+  /*
+   * No eliminamos físicamente la oferta porque posteriormente puede
+   * estar relacionada con matrículas, notas e historial académico.
+   */
   async remove(id: string) {
-    const registro = await this.findOne(id);
-    await this.periodoCarreraRepository.remove(registro);
-    return { message: 'Registro de PeriodoCarrera eliminado exitosamente.' };
+    const oferta = await this.findOne(id);
+    oferta.estado = EstadoPeriodoCarrera.INACTIVA;
+
+    await this.periodoCarreraRepository.save(oferta);
+
+    return {
+      message: 'La oferta académica fue desactivada correctamente.',
+    };
   }
 }

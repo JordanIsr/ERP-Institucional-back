@@ -1,0 +1,5 @@
+export enum TipoNota {
+  PARCIAL_1 = 'PARCIAL_1',
+  PARCIAL_2 = 'PARCIAL_2',
+  RECUPERACION = 'RECUPERACION',
+}

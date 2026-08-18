@@ -1,4 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+import { User } from '../../users/entities/user.entity';
 
 export enum EstadoDocente {
   ACTIVO = 'ACTIVO',
@@ -22,6 +24,18 @@ export class Docente {
   @Column({ nullable: true })
   correo?: string;
 
-  @Column({ type: 'enum', enum: EstadoDocente, default: EstadoDocente.ACTIVO })
+  @Column({
+    type: 'enum',
+    enum: EstadoDocente,
+    default: EstadoDocente.ACTIVO,
+  })
   estado!: EstadoDocente;
+
+  @OneToOne(() => User, {
+    nullable: true,
+    eager: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario?: User | null;
 }

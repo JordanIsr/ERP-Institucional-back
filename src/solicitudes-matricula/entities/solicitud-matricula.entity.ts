@@ -1,16 +1,9 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
-  Unique,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToOne, OneToMany,JoinColumn, Unique, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Estudiante } from '../../estudiantes/entities/estudiante.entity';
 import { PeriodoCarrera } from '../../periodo-carrera/entities/periodo-carrera.entity';
 import { Paralelo } from '../../paralelos/entities/paralelo.entity';
+import { Matricula } from '../../matriculas/entities/matricula.entity';
+import { DocumentoMatricula } from 'src/documentos-matricula/entities/documento-matricula.entity';
 
 export enum EstadoSolicitud {
   PENDIENTE = 'PENDIENTE',
@@ -38,11 +31,12 @@ export class SolicitudMatricula {
   @JoinColumn({ name: 'paralelo_id' })
   paralelo!: Paralelo;
 
-  @Column()
-  archivoCedulaUrl!: string;
+  @OneToOne(() => Matricula, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'matricula_id' })
+  matricula?: Matricula;
 
-  @Column()
-  archivoNoAdeudarUrl!: string;
+  @OneToMany(() => DocumentoMatricula, (documento) => documento.solicitud, { cascade: true,},)
+  documentos!: DocumentoMatricula[];
 
   @Column({ type: 'enum', enum: EstadoSolicitud, default: EstadoSolicitud.PENDIENTE })
   estado!: EstadoSolicitud;

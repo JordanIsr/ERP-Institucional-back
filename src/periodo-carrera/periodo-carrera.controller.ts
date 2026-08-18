@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+
 import { PeriodoCarreraService } from './periodo-carrera.service';
 import { CreatePeriodoCarreraDto } from './dto/create-periodo-carrera.dto';
 import { UpdatePeriodoCarreraDto } from './dto/update-periodo-carrera.dto';
+import { EstadoPeriodoCarrera } from './entities/periodo-carrera.entity';
+
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -10,7 +13,9 @@ import { UserRole } from '../auth/roles';
 @Controller('periodo-carrera')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PeriodoCarreraController {
-  constructor(private readonly periodoCarreraService: PeriodoCarreraService) {}
+  constructor(
+    private readonly periodoCarreraService: PeriodoCarreraService,
+  ) {}
 
   @Post()
   @Roles(UserRole.SECRETARIA)
@@ -19,16 +24,25 @@ export class PeriodoCarreraController {
   }
 
   @Get()
-@Roles(UserRole.ADMIN,UserRole.SECRETARIA,UserRole.ESTUDIANTE)
-findAll(
-  @Query('periodoId') periodoId?: string,
-  @Query('carreraId') carreraId?: string,
-) {
-  return this.periodoCarreraService.findAll({
-    periodoId,
-    carreraId
-  });
-}
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.SECRETARIA,
+    UserRole.ESTUDIANTE,
+    UserRole.DOCENTE,
+  )
+  findAll(
+    @Query('periodoId') periodoId?: string,
+    @Query('carreraId') carreraId?: string,
+    @Query('versionMallaId') versionMallaId?: string,
+    @Query('estado') estado?: EstadoPeriodoCarrera,
+  ) {
+    return this.periodoCarreraService.findAll({
+      periodoId,
+      carreraId,
+      versionMallaId,
+      estado,
+    });
+  }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.SECRETARIA)
@@ -38,7 +52,10 @@ findAll(
 
   @Patch(':id')
   @Roles(UserRole.SECRETARIA)
-  update(@Param('id') id: string, @Body() dto: UpdatePeriodoCarreraDto) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePeriodoCarreraDto,
+  ) {
     return this.periodoCarreraService.update(id, dto);
   }
 

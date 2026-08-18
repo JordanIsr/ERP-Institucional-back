@@ -1,4 +1,16 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreatePeriodoCarreraDto } from './create-periodo-carrera.dto';
+import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { EstadoPeriodoCarrera, Jornada} from '../entities/periodo-carrera.entity';
 
-export class UpdatePeriodoCarreraDto extends PartialType(CreatePeriodoCarreraDto) {}
+export class UpdatePeriodoCarreraDto {
+  @IsOptional()
+  @IsUUID()
+  versionMallaId?: string;
+
+  @IsOptional()
+  @IsEnum(Jornada)
+  jornada?: Jornada;
+
+  @IsOptional()
+  @IsEnum(EstadoPeriodoCarrera)
+  estado?: EstadoPeriodoCarrera;
+}

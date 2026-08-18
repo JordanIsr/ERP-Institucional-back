@@ -27,5 +27,5 @@ export class Estudiante {
     eager: true,
   })
   @JoinColumn({ name: 'usuario_id' })
-  usuario?: User;
+  usuario?: User | null;
 }
